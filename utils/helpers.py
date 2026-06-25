@@ -4,7 +4,6 @@ Shared utilities, API client, and UI helpers for Streamlit pages.
 """
 
 import os
-import time
 import requests
 import streamlit as st
 from dotenv import load_dotenv
@@ -116,17 +115,17 @@ def sidebar_identity():
                 st.success("API ✅ Online")
             else:
                 st.warning("API ⚠️ Degraded")
-        except:
+        except Exception:
             st.error("API ❌ Offline")
 
 
-def score_pts(time_limit: int, time_taken: float, correct: bool) -> int:
-    """Calculate points: base 100, bonus for speed."""
-    if not correct:
-        return 0
-    base = 100
-    speed_bonus = max(0, int((1 - time_taken / time_limit) * 50))
-    return base + speed_bonus
+# ── FIX: score_pts removed from helpers — import from components.quiz_engine instead.
+# Keeping this thin wrapper so any legacy import doesn't hard-crash; it delegates
+# to the canonical implementation.
+def score_pts(time_limit: int, time_taken: float, correct: bool, confidence: float = 1.0) -> int:
+    """Thin wrapper — canonical logic lives in components/quiz_engine.py."""
+    from components.quiz_engine import score_pts as _score_pts
+    return _score_pts(time_limit, time_taken, correct, confidence)
 
 
 def render_scoreboard(players: list):

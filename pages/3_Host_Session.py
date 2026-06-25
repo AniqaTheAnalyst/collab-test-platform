@@ -80,7 +80,6 @@ if st.session_state.get("session_code") and st.session_state.get("is_host"):
             qs_id = sess.get("question_set_id")
             if qs_id:
                 qs = api_get(f"/question_sets/{qs_id}")
-
                 if qs:
                     st.markdown(f"**{qs.get('title')}**")
                     st.caption(
@@ -119,11 +118,12 @@ generated_qs = st.session_state.get("last_generated_qs")
 qs_data = api_get("/question_sets")
 saved_sets = qs_data.get("question_sets", []) if qs_data else []
 
+# FIX: deduplicate — if last_generated_qs is already in saved_sets (post-publish),
+# don't add it a second time.
+saved_ids = {qs["id"] for qs in saved_sets}
 question_sets = []
-
-if generated_qs:
+if generated_qs and generated_qs.get("id") not in saved_ids:
     question_sets.append(generated_qs)
-
 question_sets.extend(saved_sets)
 
 if not question_sets:
@@ -136,12 +136,10 @@ else:
     selected_label = st.selectbox("Question set", list(options.keys()))
     chosen_qs = options[selected_label]
 
+    # FIX: chosen_qs is always defined here (inside the else block), so the
+    # redundant `if "chosen_qs" in locals()` guard is removed.
     with st.expander("Quiz information"):
-        if "chosen_qs" in locals() and chosen_qs:
-            st.write(f"Title: {chosen_qs['title']}")
-        else:
-            st.warning("No question set loaded. Please join session again.")
-            st.stop()
+        st.write(f"Title: {chosen_qs['title']}")
         st.write(f"Questions: {len(chosen_qs.get('questions', []))}")
         st.write(f"Time per question: {chosen_qs.get('time_limit',15)} seconds")
         st.warning("Questions are hidden until the quiz is completed.")
@@ -170,6 +168,5 @@ else:
                 st.session_state["player_name"] = host_name.strip()
                 st.session_state["is_host"] = True
                 st.session_state["session_data"] = sess
-                
                 st.success(f"✅ Session created! Code: **{sess['code']}**")
                 st.rerun()

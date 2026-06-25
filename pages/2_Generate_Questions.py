@@ -165,13 +165,12 @@ if generate_clicked and material_text:
             "provider": provider,
             "model": model,
             "temperature": temperature,
-            "save": True,  # Save only if user checks the box below
+            "save": True,
             "uploader": uploader_name,
         })
 
     if result and result.get("success"):
         qs = result["question_set"]
-
         st.session_state["last_generated_qs"] = qs
         st.session_state["active_question_set_id"] = qs["id"]
 
@@ -179,14 +178,10 @@ if generate_clicked and material_text:
 qs = st.session_state.get("last_generated_qs")
 
 if qs:
-    st.success(
-    f"✅ Generated {len(qs.get('questions', []))} questions successfully."
-)
-
-    st.info(f"Quiz Title: {qs.get('title','Untitled Quiz')}")
-    st.warning("Questions are hidden until the test starts.")
+    st.success(f"✅ Generated {len(qs.get('questions', []))} questions successfully.")
+    st.info(f"Quiz Title: {qs.get('title', 'Untitled Quiz')}")
+    # FIX: removed duplicate warning; one clear message is enough
     st.warning("Questions are hidden until the quiz starts.")
-
 
     col1, col2, col3 = st.columns(3)
 

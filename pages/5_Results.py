@@ -43,13 +43,18 @@ elif accuracy >= 40:
 else:
     grade, emoji = "Keep practicing", "💪"
 
-if st.session_state.get("session_data") and st.session_state.get("session_data", {}).get("questions"):
-    qset_id = st.session_state.get("session_data", {}).get("question_set_id")
-    if qset_id:
-        try:
-            api_post(f"/question_sets/{qset_id}/publish", {})
-        except Exception:
-            pass
+# FIX: The old condition checked session_data.get("questions") which is never
+# present on a session object — questions live on the question set, not the
+# session. Instead, publish whenever we have a valid question_set_id.
+qset_id = st.session_state.get("active_question_set_id") or (
+    st.session_state.get("session_data") or {}
+).get("question_set_id")
+
+if qset_id:
+    try:
+        api_post(f"/question_sets/{qset_id}/publish", {})
+    except Exception:
+        pass
 
 st.title(f"{emoji} {grade}, {player_name}!")
 
@@ -86,17 +91,17 @@ for a in answers:
         st.markdown(f"**Question:** {a['question']}")
 
         chosen = a.get("chosen")
-        correct = a.get("correct")
+        correct_ans = a.get("correct")
 
         if chosen:
             if got:
                 st.success(f"✅ Your answer: **{chosen}** (correct!)")
             else:
                 st.error(f"❌ Your answer: **{chosen}**")
-                st.info(f"✅ Correct answer: **{correct}**")
+                st.info(f"✅ Correct answer: **{correct_ans}**")
         else:
             st.warning("⏰ No answer submitted (time ran out)")
-            st.info(f"✅ Correct answer: **{correct}**")
+            st.info(f"✅ Correct answer: **{correct_ans}**")
 
         built_in_exp = a.get("explanation", "")
         if built_in_exp:
@@ -109,7 +114,7 @@ for a in answers:
                     with st.spinner("Thinking…"):
                         result = api_post("/explain", {
                             "question": a["question"],
-                            "correct_answer": correct or "",
+                            "correct_answer": correct_ans or "",
                             "student_answer": chosen or "(no answer)",
                             "context": "",
                             "provider": provider,
@@ -132,13 +137,11 @@ col_a, col_b, col_c = st.columns(3)
 
 with col_a:
     if st.button("🔄 Retake this test", use_container_width=True, type="primary"):
-        # Keep session data, reset quiz state
         st.session_state["quiz_active"] = True
         st.session_state["q_index"] = 0
         st.session_state["answers"] = []
         st.session_state["score"] = 0
         st.session_state["q_start_time"] = None
-        # Reset answered markers
         keys_to_del = [k for k in st.session_state if k.startswith("answered_") or
                        k.startswith("chosen_") or k.startswith("ai_exp_")]
         for k in keys_to_del:
