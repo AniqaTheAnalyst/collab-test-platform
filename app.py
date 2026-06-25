@@ -38,7 +38,7 @@ with col1:
 
 with col2:
     st.markdown("### 🤖 Generate")
-    st.markdown("Use AI to generate custom questions — choose type, difficulty, and write your own prompt.")
+    st.markdown("Use AI to generate custom questions — write your own prompt.")
     if st.button("Generate Questions →", use_container_width=True):
         st.switch_page("pages/2_Generate_Questions.py")
 
