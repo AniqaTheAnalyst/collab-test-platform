@@ -343,7 +343,11 @@ with tab2:
         selected = st.selectbox("Choose question set", list(options.keys()), key="solo_qs_select")
         chosen_qs = options[selected]
     with st.expander("Quiz Information"):
-        st.write(f"Title: {chosen_qs['title']}")
+        if "chosen_qs" in locals() and chosen_qs:
+            st.write(f"Title: {chosen_qs['title']}")
+        else:
+            st.warning("No question set loaded. Please join session again.")
+            st.stop()
         st.write(f"Questions: {len(chosen_qs.get('questions', []))}")
         st.write(f"Time per question: {chosen_qs.get('time_limit',15)} seconds")
         st.warning("Questions are hidden until the test begins.")
