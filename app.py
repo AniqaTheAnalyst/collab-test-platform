@@ -50,7 +50,7 @@ with col3:
 
 with col4:
     st.markdown("### 🚪 Join")
-    st.markdown("Enter a code to join a friend's session, or take a solo timed test.")
+    st.markdown("Enter a code to join a friend's session, or take a solo timed   test.")
     if st.button("Join / Solo Test →", use_container_width=True):
         st.switch_page("pages/4_Join_Session.py")
 
