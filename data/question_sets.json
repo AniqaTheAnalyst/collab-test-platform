@@ -1,0 +1,649 @@
+{
+  "1782373754031": {
+    "title": "Data Analyst Triage and Business Analytics Quiz",
+    "subject": "Business Analytics and Data Analysis",
+    "time_limit": 15,
+    "questions": [
+      {
+        "question": "What is the first step in triaging a business question as a data analyst?",
+        "type": "mcq",
+        "options": [
+          "Understand the real decision behind the question",
+          "Decide the right type of work",
+          "Evaluate urgency and stakes",
+          "Understand the scope before saying yes"
+        ],
+        "answer": "Evaluate urgency and stakes",
+        "explanation": "Evaluating urgency and stakes helps determine the importance and time sensitivity of the question.",
+        "topic_tag": "Business Analytics"
+      },
+      {
+        "question": "What is the purpose of understanding the real decision behind a business question?",
+        "type": "mcq",
+        "options": [
+          "To provide a quick answer",
+          "To validate the opportunity before optimizing",
+          "To identify the decision the stakeholder is trying to make",
+          "To create a new metric"
+        ],
+        "answer": "To identify the decision the stakeholder is trying to make",
+        "explanation": "Understanding the real decision behind a business question helps identify the underlying objective and ensures the analysis is focused on the correct outcome.",
+        "topic_tag": "Business Analytics"
+      },
+      {
+        "question": "What is the framework for understanding a business question?",
+        "type": "mcq",
+        "options": [
+          "Metric \u2192 Decision \u2192 Opportunity \u2192 Action",
+          "Decision \u2192 Opportunity \u2192 Metric \u2192 Action",
+          "Opportunity \u2192 Decision \u2192 Metric \u2192 Action",
+          "Action \u2192 Opportunity \u2192 Decision \u2192 Metric"
+        ],
+        "answer": "Metric \u2192 Decision \u2192 Opportunity \u2192 Action",
+        "explanation": "This framework helps ensure that the analysis is focused on the correct outcome and that the opportunity is validated before optimizing.",
+        "topic_tag": "Business Analytics"
+      },
+      {
+        "question": "What is the purpose of validating the opportunity before optimizing?",
+        "type": "mcq",
+        "options": [
+          "To ensure the analysis is focused on the correct outcome",
+          "To create a new metric",
+          "To provide a quick answer",
+          "To identify the decision the stakeholder is trying to make"
+        ],
+        "answer": "To ensure the analysis is focused on the correct outcome",
+        "explanation": "Validating the opportunity before optimizing ensures that the analysis is focused on the correct outcome and that resources are not wasted on non-essential tasks.",
+        "topic_tag": "Business Analytics"
+      },
+      {
+        "question": "What is the key to not every question needing deep analysis?",
+        "type": "mcq",
+        "options": [
+          "Matching the effort to the business impact",
+          "Providing a quick answer",
+          "Creating a new metric",
+          "Identifying the decision the stakeholder is trying to make"
+        ],
+        "answer": "Matching the effort to the business impact",
+        "explanation": "Matching the effort to the business impact ensures that resources are not wasted on non-essential tasks and that the analysis is focused on the correct outcome.",
+        "topic_tag": "Business Analytics"
+      }
+    ],
+    "id": "1782373754031",
+    "uploader": "",
+    "created_at": "2026-06-25T13:49:14.031644"
+  },
+  "1782375111028": {
+    "title": "Programming Fundamentals Quiz",
+    "subject": "Computer Science",
+    "time_limit": 15,
+    "questions": [
+      {
+        "question": "What is the data type of a sequence of characters in programming?",
+        "type": "mcq",
+        "options": [
+          "Integer",
+          "Float",
+          "String",
+          "Boolean"
+        ],
+        "answer": "String",
+        "explanation": "A string is a sequence of characters, such as a word or sentence.",
+        "topic_tag": "Data Types"
+      },
+      {
+        "question": "What is the primary purpose of using a string data type in programming?",
+        "type": "short",
+        "options": [],
+        "answer": "To represent text or sequences of characters",
+        "explanation": "",
+        "topic_tag": "Data Types"
+      },
+      {
+        "question": "Which of the following is an example of a string in programming?",
+        "type": "mcq",
+        "options": [
+          "5",
+          "3.14",
+          "Hello World",
+          "True"
+        ],
+        "answer": "Hello World",
+        "explanation": "A string can be a word, phrase, or sentence, such as 'Hello World'.",
+        "topic_tag": "Strings"
+      },
+      {
+        "question": "What is a common operation performed on strings in programming?",
+        "type": "mcq",
+        "options": [
+          "Arithmetic operation",
+          "Logical operation",
+          "Concatenation",
+          "Comparison"
+        ],
+        "answer": "Concatenation",
+        "explanation": "Concatenation is the process of combining two or more strings into a single string.",
+        "topic_tag": "String Operations"
+      },
+      {
+        "question": "What is the result of concatenating two strings in programming?",
+        "type": "short",
+        "options": [],
+        "answer": "A new string that combines the two original strings",
+        "explanation": "",
+        "topic_tag": "String Operations"
+      }
+    ],
+    "id": "1782375111028",
+    "uploader": "",
+    "created_at": "2026-06-25T14:11:51.029057",
+    "is_public": false
+  },
+  "1782375382271": {
+    "title": "SQL \u098f\u09ac\u0982 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8 \u09b8\u09ae\u09cd\u09aa\u09b0\u09cd\u0995\u09c7 \u09aa\u09cd\u09b0\u09b6\u09cd\u09a8\u0997\u09c1\u09b2\u09bf",
+    "subject": "SQL \u098f\u09ac\u0982 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8",
+    "time_limit": 60,
+    "questions": [
+      {
+        "question": "\u09af\u09c7 \u09aa\u09cd\u09b0\u0995\u09cd\u09b0\u09bf\u09af\u09bc\u09be\u099f\u09bf \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8 \u09a5\u09c7\u0995\u09c7 \u09a1\u09c7\u099f\u09be \u09aa\u09c1\u09a8\u09b0\u09be\u09af\u09bc \u09b8\u09be\u099c\u09be\u09a8\u09cb\u09b0 \u099c\u09a8\u09cd\u09af \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u09b9\u09af\u09bc?",
+        "type": "mcq",
+        "options": [
+          "\u09a1\u09bf\u09a1\u09bf\u098f\u09b2 (\u09a1\u09c7\u099f\u09be \u09a1\u09bf\u09ab\u09bf\u09a8\u09bf\u09b6\u09a8 \u09b2\u09cd\u09af\u09be\u0999\u09cd\u0997\u09c1\u09af\u09bc\u09c7\u099c)",
+          "\u09a1\u09bf\u098f\u09ae\u098f\u09b2 (\u09a1\u09c7\u099f\u09be \u09ae\u09cd\u09af\u09be\u09a8\u09bf\u09aa\u09c1\u09b2\u09c7\u09b6\u09a8 \u09b2\u09cd\u09af\u09be\u0999\u09cd\u0997\u09c1\u09af\u09bc\u09c7\u099c)",
+          "\u09a1\u09bf\u0995\u09c7\u09b2 (\u09a1\u09c7\u099f\u09be \u0995\u09a8\u09cd\u099f\u09cd\u09b0\u09cb\u09b2 \u09b2\u09cd\u09af\u09be\u0999\u09cd\u0997\u09c1\u09af\u09bc\u09c7\u099c)",
+          "\u09a1\u09bf\u0995\u09bf\u0989\u098f\u09b2 (\u09a1\u09c7\u099f\u09be \u0995\u09c1\u09af\u09bc\u09c7\u09b0\u09bf \u09b2\u09cd\u09af\u09be\u0999\u09cd\u0997\u09c1\u09af\u09bc\u09c7\u099c)"
+        ],
+        "answer": "\u09a1\u09bf\u098f\u09ae\u098f\u09b2 (\u09a1\u09c7\u099f\u09be \u09ae\u09cd\u09af\u09be\u09a8\u09bf\u09aa\u09c1\u09b2\u09c7\u09b6\u09a8 \u09b2\u09cd\u09af\u09be\u0999\u09cd\u0997\u09c1\u09af\u09bc\u09c7\u099c)",
+        "explanation": "\u09a1\u09bf\u098f\u09ae\u098f\u09b2 \u09a1\u09c7\u099f\u09be \u09ac\u09cd\u09af\u09ac\u09b8\u09cd\u09a5\u09be\u09aa\u09a8\u09be\u09b0 \u099c\u09a8\u09cd\u09af \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u09b9\u09af\u09bc, \u09af\u09c7\u09ae\u09a8 \u09a1\u09c7\u099f\u09be \u0987\u09a8\u09b8\u09be\u09b0\u09cd\u099f, \u0986\u09aa\u09a1\u09c7\u099f, \u09a1\u09bf\u09b2\u09bf\u099f \u098f\u09ac\u0982 \u09b8\u09c7\u09b2\u09c7\u0995\u09cd\u099f\u0964",
+        "topic_tag": "SQL"
+      },
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8 \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u09af\u09be \u09aa\u09cd\u09b0\u09a4\u09bf\u099f\u09bf \u09b0\u09c7\u0995\u09b0\u09cd\u09a1\u09c7\u09b0 \u099c\u09a8\u09cd\u09af \u098f\u0995\u099f\u09bf \u0985\u09a8\u09a8\u09cd\u09af \u0995\u09c0 \u09a5\u09be\u0995\u09c7?",
+        "type": "mcq",
+        "options": [
+          "\u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8",
+          "\u09a8\u09a8-\u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8",
+          "\u09b9\u09be\u0987\u09aa\u09be\u09b0\u09b2\u09bf\u0982\u0995\u09c7\u09a1 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8",
+          "\u0997\u09cd\u09b0\u09be\u09ab \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8"
+        ],
+        "answer": "\u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8",
+        "explanation": "\u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7 \u09aa\u09cd\u09b0\u09a4\u09bf\u099f\u09bf \u09b0\u09c7\u0995\u09b0\u09cd\u09a1\u09c7\u09b0 \u099c\u09a8\u09cd\u09af \u098f\u0995\u099f\u09bf \u0985\u09a8\u09a8\u09cd\u09af \u0995\u09c0 \u09a5\u09be\u0995\u09c7 \u09af\u09be \u09b8\u09c7\u0987 \u09b0\u09c7\u0995\u09b0\u09cd\u09a1\u099f\u09bf\u0995\u09c7 \u0985\u09a8\u09a8\u09cd\u09af \u0995\u09b0\u09c7 \u09a4\u09cb\u09b2\u09c7\u0964",
+        "topic_tag": "\u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8"
+      },
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be \u09b8\u0982\u0997\u09cd\u09b0\u09b9 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u09af\u09be \u09aa\u09cd\u09b0\u09a4\u09bf\u099f\u09bf \u09b0\u09c7\u0995\u09b0\u09cd\u09a1\u09c7\u09b0 \u099c\u09a8\u09cd\u09af \u098f\u0995\u099f\u09bf \u0985\u09a8\u09a8\u09cd\u09af \u0995\u09c0 \u09a5\u09be\u0995\u09c7 \u09a8\u09be?",
+        "type": "mcq",
+        "options": [
+          ""
+        ],
+        "topic_tag": "",
+        "explanation": ""
+      }
+    ],
+    "id": "1782375382271",
+    "uploader": "",
+    "created_at": "2026-06-25T14:16:22.271046",
+    "is_public": false
+  },
+  "1782375955925": {
+    "title": "SQL and Database Fundamentals Quiz",
+    "subject": "Database Management and SQL",
+    "time_limit": 15,
+    "questions": [
+      {
+        "question": "Which of the following is a key characteristic of SQL?",
+        "type": "mcq",
+        "options": [
+          "It is a programming language",
+          "It is a scripting language",
+          "It is a standard language for querying relational databases",
+          "It is a data modeling language"
+        ],
+        "answer": "c",
+        "explanation": "SQL is a standard language for querying relational databases.",
+        "topic_tag": "SQL"
+      },
+      {
+        "question": "What is the primary purpose of a database?",
+        "type": "short",
+        "options": [],
+        "answer": "To store and manage data",
+        "explanation": "A database is a collection of data that can be easily accessed.",
+        "topic_tag": "Database"
+      },
+      {
+        "question": "Which of the following is a type of SQL command?",
+        "type": "mcq",
+        "options": [
+          "DML (Data Manipulation Language)",
+          "TCL (Transaction Control Language)",
+          "DCL (Data Control Language)",
+          "DQL (Data Query Language)"
+        ],
+        "answer": "a",
+        "explanation": "DML includes commands like INSERT, UPDATE, and DELETE.",
+        "topic_tag": "SQL Commands"
+      },
+      {
+        "question": "What is the difference between a SQL database and a NoSQL database?",
+        "type": "short",
+        "options": [],
+        "answer": "SQL databases store data in tables with rows and columns, while NoSQL databases store data in various formats such as key-value pairs, documents, or graphs.",
+        "explanation": "SQL databases are structured, while NoSQL databases are semi-structured or unstructured.",
+        "topic_tag": "SQL vs NoSQL"
+      },
+      {
+        "question": "What is the purpose of a PRIMARY KEY in a database?",
+        "type": "mcq",
+        "options": [
+          "To uniquely identify each record",
+          "To enforce data integrity",
+          "To improve data security",
+          "To increase data storage capacity"
+        ],
+        "answer": "a",
+        "explanation": "A PRIMARY KEY ensures that each record has a unique identifier.",
+        "topic_tag": "Database Constraints"
+      }
+    ],
+    "id": "1782375955925",
+    "uploader": "",
+    "created_at": "2026-06-25T14:25:55.925481",
+    "is_public": false
+  },
+  "1782376909488": {
+    "title": "SQL and Database Quiz",
+    "subject": "Database Management",
+    "time_limit": 25,
+    "questions": [
+      {
+        "question": "\u09af\u09c7 \u09ad\u09be\u09b7\u09be\u099f\u09bf \u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7 \u0995\u09be\u099c \u0995\u09b0\u09a4\u09c7 \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u09b9\u09af\u09bc?",
+        "type": "mcq",
+        "options": [
+          "SQL",
+          "NoSQL",
+          "Java",
+          "Python"
+        ],
+        "answer": "SQL",
+        "explanation": "SQL \u09b9\u09b2 \u09b0\u09bf\u09b2\u09c7\u09b6\u09a8\u09be\u09b2 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7 \u0995\u09be\u099c \u0995\u09b0\u09a4\u09c7 \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u098f\u0995\u099f\u09bf \u09ad\u09be\u09b7\u09be\u0964",
+        "topic_tag": "SQL"
+      },
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u09af\u09c7\u0996\u09be\u09a8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u098f\u0995\u099f\u09bf \u099f\u09c7\u09ac\u09bf\u09b2\u09c7\u09b0 \u09b0\u09cb\u09af\u09bc\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7 \u0995\u09b2\u09be\u09ae\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7?",
+        "type": "mcq",
+        "options": [
+          "SQL",
+          "NoSQL",
+          "Graph",
+          "Document"
+        ],
+        "answer": "SQL",
+        "explanation": "SQL \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u098f\u0995\u099f\u09bf \u099f\u09c7\u09ac\u09bf\u09b2\u09c7\u09b0 \u09b0\u09cb\u09af\u09bc\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7 \u0995\u09b2\u09be\u09ae\u09c7\u09b0 \u09b8\u09be\u09a5\u09c7\u0964",
+        "topic_tag": "Database Types"
+      },
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u09af\u09c7\u0996\u09be\u09a8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u0995\u09c0-\u09ae\u09be\u09a8 \u099c\u09cb\u09a1\u09bc\u09be\u09b0 \u09b8\u09be\u09a5\u09c7?",
+        "type": "mcq",
+        "options": [
+          "SQL",
+          "NoSQL",
+          "Graph",
+          "Document"
+        ],
+        "answer": "NoSQL",
+        "explanation": "NoSQL \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8\u09c7 \u09a1\u09c7\u099f\u09be \u09b8\u09cd\u099f\u09cb\u09b0 \u0995\u09b0\u09be \u09b9\u09af\u09bc \u0995\u09c0-\u09ae\u09be\u09a8 \u099c\u09cb\u09a1\u09bc\u09be\u09b0 \u09b8\u09be\u09a5\u09c7\u0964",
+        "topic_tag": "Database Types"
+      },
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8 \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u09b9\u09af\u09bc \u09ac\u09cd\u09af\u09be\u0999\u09cd\u0995\u09bf\u0982 \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae\u09c7 \u098f\u09ac\u0982 ERP \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae\u09c7?",
+        "type": "mcq",
+        "options": [
+          "SQL",
+          "NoSQL",
+          "Graph",
+          "Document"
+        ],
+        "answer": "SQL",
+        "explanation": "SQL \u09a7\u09b0\u09a3\u09c7\u09b0 \u09a1\u09c7\u099f\u09be\u09ac\u09c7\u09b8 \u09ac\u09cd\u09af\u09ac\u09b9\u09c3\u09a4 \u09b9\u09af\u09bc \u09ac\u09cd\u09af\u09be\u0999\u09cd\u0995\u09bf\u0982 \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae\u09c7 \u098f\u09ac\u0982 ERP \u09b8\u09bf\u09b8\u09cd\u099f\u09c7\u09ae\u09c7\u0964",
+        "topic_tag": "Database Applications"
+      }
+    ],
+    "id": "1782376909488",
+    "uploader": "",
+    "created_at": "2026-06-25T14:41:49.488886",
+    "is_public": false
+  },
+  "1782379705744": {
+    "title": "SQL Fundamentals Quiz",
+    "subject": "Database Management",
+    "time_limit": 15,
+    "questions": [
+      {
+        "question": "What is the primary purpose of SQL?",
+        "type": "mcq",
+        "options": [
+          "To create and manage database structures",
+          "To insert, update, and delete data",
+          "To analyze and visualize data",
+          "To design and implement database security"
+        ],
+        "answer": "To create and manage database structures",
+        "explanation": "SQL is primarily used for defining and managing database structures, including creating and modifying tables, indexes, views, and relationships.",
+        "topic_tag": "SQL Basics"
+      },
+      {
+        "question": "What is the main difference between SQL and NoSQL databases?",
+        "type": "mcq",
+        "options": [
+          "SQL databases use tables, while NoSQL databases use documents",
+          "SQL databases are relational, while NoSQL databases are non-relational",
+          "SQL databases are transactional, while NoSQL databases are analytical",
+          "SQL databases are scalable, while NoSQL databases are not"
+        ],
+        "answer": "SQL databases are relational, while NoSQL databases are non-relational",
+        "explanation": "SQL databases use a relational model to store and manage data, while NoSQL databases use a non-relational model, such as documents or key-value pairs.",
+        "topic_tag": "SQL vs NoSQL"
+      },
+      {
+        "question": "What is the purpose of a PRIMARY KEY constraint in SQL?",
+        "type": "mcq",
+        "options": [
+          "To ensure data integrity by preventing duplicate values",
+          "To enforce data consistency by restricting data entry",
+          "To improve data performance by indexing columns",
+          "To simplify data retrieval by creating views"
+        ],
+        "answer": "To ensure data integrity by preventing duplicate values",
+        "explanation": "A PRIMARY KEY constraint in SQL ensures that each value in a column is unique, preventing duplicate values and maintaining data integrity.",
+        "topic_tag": "SQL Constraints"
+      },
+      {
+        "question": "What is the purpose of a Common Table Expression (CTE) in SQL?",
+        "type": "mcq",
+        "options": [
+          "To simplify complex queries by breaking them down into smaller parts",
+          "To improve data performance by reducing the amount of data being processed",
+          "To enforce data consistency by restricting data entry",
+          "To simplify data retrieval by creating views"
+        ],
+        "answer": "To simplify complex queries by breaking them down into smaller parts",
+        "explanation": "A Common Table Expression (CTE) in SQL is a temporary result set that can be used to simplify complex queries by breaking them down into smaller, more manageable parts.",
+        "topic_tag": "SQL CTEs"
+      }
+    ],
+    "id": "1782379705744",
+    "uploader": "",
+    "created_at": "2026-06-25T15:28:25.744842",
+    "is_public": false
+  },
+  "1782380532779": {
+    "title": "SQL and Database Fundamentals Quiz",
+    "subject": "Database Management and SQL",
+    "time_limit": 55,
+    "questions": [
+      {
+        "question": "Which of the following best describes the primary purpose of SQL?",
+        "type": "mcq",
+        "options": [
+          "To manage and manipulate data in relational databases",
+          "To create and design database structures",
+          "To perform complex mathematical operations",
+          "To develop and deploy database applications"
+        ],
+        "answer": "A",
+        "explanation": "SQL is a standard language for querying, inserting, updating, and managing data stored in relational databases.",
+        "topic_tag": "SQL Basics"
+      },
+      {
+        "question": "What is the main difference between a SQL database and a NoSQL database?",
+        "type": "mcq",
+        "options": [
+          "SQL databases use tables with rows and columns, while NoSQL databases use key-value pairs",
+          "SQL databases are used for complex transactions, while NoSQL databases are used for real-time analytics",
+          "SQL databases are more secure than NoSQL databases",
+          "SQL databases are more scalable than NoSQL databases"
+        ],
+        "answer": "A",
+        "explanation": "SQL databases store data in tables with rows and columns, while NoSQL databases store data in various formats such as key-value pairs, JSON documents, or graphs.",
+        "topic_tag": "Database Types"
+      },
+      {
+        "question": "What is the purpose of a Common Table Expression (CTE) in SQL?",
+        "type": "mcq",
+        "options": [
+          "To simplify complex queries",
+          "To improve database performance",
+          "To create temporary result sets",
+          "To handle errors and exceptions"
+        ],
+        "answer": "C",
+        "explanation": "A CTE is a temporary result set that exists only during the execution of a query, allowing for simpler and more readable code.",
+        "topic_tag": "SQL Querying"
+      },
+      {
+        "question": "What is the main advantage of using a Database Management System (DBMS)?",
+        "type": "mcq",
+        "options": [
+          "Improved data security",
+          "Enhanced data consistency",
+          "Simplified data management",
+          "Increased data scalability"
+        ],
+        "answer": "C",
+        "explanation": "A DBMS simplifies data management by providing a standardized interface for interacting with the database, making it easier to manage and maintain.",
+        "topic_tag": "Database Management"
+      }
+    ],
+    "id": "1782380532779",
+    "uploader": "",
+    "created_at": "2026-06-25T15:42:12.779748",
+    "is_public": false
+  },
+  "1782380954597": {
+    "title": "Feline Biology and Behavior Quiz",
+    "subject": "Animal Science",
+    "time_limit": 45,
+    "questions": [
+      {
+        "question": "What is a primary characteristic of domestic cats?",
+        "type": "mcq",
+        "options": [
+          "Omnivorous diet",
+          "Large size",
+          "Excellent day vision",
+          "Carnivorous diet"
+        ],
+        "answer": "Carnivorous diet",
+        "explanation": "Cats are primarily meat-eaters, which is reflected in their diet.",
+        "topic_tag": "Feline Diet"
+      },
+      {
+        "question": "How do cats primarily communicate with their owners?",
+        "type": "short",
+        "options": [],
+        "answer": "Vocalizations and body language",
+        "explanation": "Cats use a variety of sounds and physical cues to convey their needs and emotions.",
+        "topic_tag": "Feline Communication"
+      },
+      {
+        "question": "What is a notable benefit of owning a cat?",
+        "type": "mcq",
+        "options": [
+          "Improved physical health",
+          "Enhanced social skills",
+          "Reduced stress and comfort",
+          "Increased productivity"
+        ],
+        "answer": "Reduced stress and comfort",
+        "explanation": "Cats can provide companionship and emotional support, leading to reduced stress and increased comfort.",
+        "topic_tag": "Feline Companionship"
+      },
+      {
+        "question": "What is a notable feature of a cat's hunting abilities?",
+        "type": "mcq",
+        "options": [
+          "Excellent day vision",
+          "Poor night vision",
+          "Slow reflexes",
+          "Quick reflexes"
+        ],
+        "answer": "Quick reflexes",
+        "explanation": "Cats have fast reflexes, which enable them to catch prey effectively, especially at night.",
+        "topic_tag": "Feline Hunting"
+      },
+      {
+        "question": "Why are cats popular pets?",
+        "type": "short",
+        "options": [],
+        "answer": "Easy to care for and adaptable",
+        "explanation": "Cats are relatively low-maintenance pets that can thrive in various living environments.",
+        "topic_tag": "Feline Domestication"
+      }
+    ],
+    "id": "1782380954597",
+    "uploader": "aniqa",
+    "created_at": "2026-06-25T15:49:14.597749",
+    "is_public": false
+  },
+  "1782381131077": {
+    "title": "Feline Biology and Behavior",
+    "subject": "Biology",
+    "time_limit": 45,
+    "questions": [
+      {
+        "question": "What is a primary reason domestic cats are popular pets?",
+        "type": "short",
+        "options": [],
+        "answer": "They are relatively easy to care for",
+        "explanation": "Cats are low-maintenance pets that can adapt to different living environments.",
+        "topic_tag": "Pet Care"
+      },
+      {
+        "question": "How do cats primarily communicate with their owners?",
+        "type": "mcq",
+        "options": [
+          "Through body language",
+          "Through vocalizations only",
+          "Through written messages",
+          "Through visual displays"
+        ],
+        "answer": "A",
+        "explanation": "Cats primarily communicate through a variety of sounds and body language such as tail movements and ear positions.",
+        "topic_tag": "Communication"
+      },
+      {
+        "question": "What is a benefit of having a cat as a pet?",
+        "type": "mcq",
+        "options": [
+          "They can provide companionship and reduce stress",
+          "They can increase stress and anxiety",
+          "They can improve physical health",
+          "They can decrease physical activity"
+        ],
+        "answer": "A",
+        "explanation": "Cats can provide companionship and help reduce stress and bring comfort to their owners.",
+        "topic_tag": "Benefits"
+      },
+      {
+        "question": "What is a characteristic of a cat's hunting ability?",
+        "type": "mcq",
+        "options": [
+          "Their slow reflexes and poor night vision",
+          "Their sharp senses and agility",
+          "Their large size and strength",
+          "Their ability to fly"
+        ],
+        "answer": "B",
+        "explanation": "Cats are natural hunters with excellent night vision and quick reflexes, which help them catch prey.",
+        "topic_tag": "Hunting"
+      },
+      {
+        "question": "Why are cats considered one of the most beloved animals in the world?",
+        "type": "mcq",
+        "options": [
+          "Because of their small size and cute appearance",
+          "Because of their playful behavior and unique personalities",
+          "Because of their ability to fly",
+          "Because of their ability to talk"
+        ],
+        "answer": "B",
+        "explanation": "Their playful behavior, curiosity, and unique personalities make them one of the most beloved animals in the world.",
+        "topic_tag": "Popularity"
+      }
+    ],
+    "id": "1782381131077",
+    "uploader": "aniqa",
+    "created_at": "2026-06-25T15:52:11.077093",
+    "is_public": false
+  },
+  "1782381715562": {
+    "title": "\u09ac\u09bf\u09ad\u09bf\u09a8\u09cd\u09a8 \u09a7\u09b0\u09a3\u09c7\u09b0 \u09aa\u09cd\u09b0\u09b6\u09cd\u09a8 \u09b8\u09b9 \u0995\u09cd\u09af\u09be\u099f \u09b8\u09ae\u09cd\u09aa\u09b0\u09cd\u0995\u09c7 \u09aa\u09b0\u09c0\u0995\u09cd\u09b7\u09be",
+    "subject": "\u0995\u09cd\u09af\u09be\u099f",
+    "time_limit": 50,
+    "questions": [
+      {
+        "question": "\u09af\u09c7 \u09a7\u09b0\u09a8\u09c7\u09b0 \u09aa\u09cd\u09b0\u09be\u09a3\u09c0 \u09b9\u09b2 \u0995\u09cd\u09af\u09be\u099f?",
+        "type": "mcq",
+        "options": [
+          "\u0989\u09ad\u099a\u09b0",
+          "\u09b8\u09b0\u09c0\u09b8\u09c3\u09aa",
+          "\u09b8\u09cd\u09a4\u09a8\u09cd\u09af\u09aa\u09be\u09af\u09bc\u09c0",
+          "\u0995\u09c0\u099f\u09aa\u09a4\u0999\u09cd\u0997"
+        ],
+        "answer": "\u09b8\u09cd\u09a4\u09a8\u09cd\u09af\u09aa\u09be\u09af\u09bc\u09c0",
+        "explanation": "\u0995\u09cd\u09af\u09be\u099f \u09b9\u09b2 \u098f\u0995 \u09a7\u09b0\u09a8\u09c7\u09b0 \u09b8\u09cd\u09a4\u09a8\u09cd\u09af\u09aa\u09be\u09af\u09bc\u09c0 \u09aa\u09cd\u09b0\u09be\u09a3\u09c0",
+        "topic_tag": "\u09aa\u09cd\u09b0\u09be\u09a3\u09c0\u099c\u0997\u09a4"
+      },
+      {
+        "question": "\u0995\u09cd\u09af\u09be\u099f \u0995\u09c0\u09ad\u09be\u09ac\u09c7 \u0995\u09a5\u09be \u09ac\u09b2\u09c7?",
+        "type": "short",
+        "options": [],
+        "answer": "\u09ae\u09bf\u0989, \u09aa\u09be\u09b0, \u09b9\u09bf\u09b8",
+        "explanation": "\u0995\u09cd\u09af\u09be\u099f \u09ae\u09bf\u0989, \u09aa\u09be\u09b0, \u09b9\u09bf\u09b8 \u0987\u09a4\u09cd\u09af\u09be\u09a6\u09bf \u09b6\u09ac\u09cd\u09a6 \u09a6\u09bf\u09af\u09bc\u09c7 \u0995\u09a5\u09be \u09ac\u09b2\u09c7",
+        "topic_tag": "\u0995\u09cd\u09af\u09be\u099f\u09c7\u09b0 \u09ac\u09bf\u09b6\u09c7\u09b7\u09a4\u09cd\u09ac"
+      },
+      {
+        "question": "\u0995\u09cd\u09af\u09be\u099f \u0995\u09c0\u09ad\u09be\u09ac\u09c7 \u09b6\u09bf\u0995\u09be\u09b0 \u0995\u09b0\u09c7?",
+        "type": "mcq",
+        "options": [
+          "\u09a6\u09bf\u09a8\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc",
+          "\u09b0\u09be\u09a4\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc",
+          "\u09ad\u09cb\u09b0\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc",
+          "\u09b8\u09a8\u09cd\u09a7\u09cd\u09af\u09be\u09b0 \u09b8\u09ae\u09af\u09bc"
+        ],
+        "answer": "\u09b0\u09be\u09a4\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc",
+        "explanation": "\u0995\u09cd\u09af\u09be\u099f \u09b0\u09be\u09a4\u09c7\u09b0 \u09b8\u09ae\u09af\u09bc \u09b6\u09bf\u0995\u09be\u09b0 \u0995\u09b0\u09c7",
+        "topic_tag": "\u09b6\u09bf\u0995\u09be\u09b0 \u0995\u09b0\u09be\u09b0 \u0995\u09cc\u09b6\u09b2"
+      },
+      {
+        "question": "\u0995\u09cd\u09af\u09be\u099f \u09ae\u09be\u09a8\u09c1\u09b7\u09c7\u09b0 \u0995\u09cb\u09a8 \u09b8\u09cd\u09ac\u09be\u09b8\u09cd\u09a5\u09cd\u09af\u0997\u09a4 \u09b8\u09c1\u09ac\u09bf\u09a7\u09be \u09aa\u09cd\u09b0\u09a6\u09be\u09a8 \u0995\u09b0\u09c7?",
+        "type": "mcq",
+        "options": [
+          "\u09a4\u09be\u09a6\u09c7\u09b0 \u09b6\u09bf\u0995\u09be\u09b0 \u0995\u09b0\u09be\u09b0 \u0995\u09cd\u09b7\u09ae\u09a4\u09be",
+          "\u09a4\u09be\u09a6\u09c7\u09b0 \u09b8\u09c1\u09a8\u09cd\u09a6\u09b0 \u0986\u0995\u09be\u09b0",
+          "\u09a4\u09be\u09a6\u09c7\u09b0 \u09ae\u09b8\u09cd\u09a4\u09bf\u09b7\u09cd\u0995\u09c7\u09b0 \u0997\u09a4\u09bf\u09b6\u09c0\u09b2\u09a4\u09be",
+          "\u09a4\u09be\u09a6\u09c7\u09b0 \u09b8\u09cd\u099f\u09cd\u09b0\u09c7\u09b8 \u0995\u09ae\u09be\u09a4\u09c7 \u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af \u0995\u09b0\u09c7"
+        ],
+        "answer": "\u09a4\u09be\u09a6\u09c7\u09b0 \u09b8\u09cd\u099f\u09cd\u09b0\u09c7\u09b8 \u0995\u09ae\u09be\u09a4\u09c7 \u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af \u0995\u09b0\u09c7",
+        "explanation": "\u0995\u09cd\u09af\u09be\u099f \u09a4\u09be\u09a6\u09c7\u09b0 \u09ae\u09be\u09b2\u09bf\u0995\u09a6\u09c7\u09b0 \u09b8\u09cd\u099f\u09cd\u09b0\u09c7\u09b8 \u0995\u09ae\u09be\u09a4\u09c7 \u09b8\u09be\u09b9\u09be\u09af\u09cd\u09af \u0995\u09b0\u09c7",
+        "topic_tag": "\u09b8\u09cd\u09ac\u09be\u09b8\u09cd\u09a5\u09cd\u09af\u0997\u09a4 \u09b8\u09c1\u09ac\u09bf\u09a7\u09be"
+      },
+      {
+        "question": "\u0995\u09cd\u09af\u09be\u099f \u0995\u09c0\u09ad\u09be\u09ac\u09c7 \u0995\u09a5\u09be \u09ac\u09b2\u09c7?",
+        "type": "mcq",
+        "options": [
+          "\u09b6\u09ac\u09cd\u09a6\u09c7\u09b0 \u09ae\u09be\u09a7\u09cd\u09af\u09ae\u09c7",
+          "\u09b6\u09be\u09b0\u09c0"
+        ],
+        "topic_tag": "",
+        "explanation": ""
+      }
+    ],
+    "id": "1782381715562",
+    "uploader": "",
+    "created_at": "2026-06-25T16:01:55.562572",
+    "is_public": false
+  }
+}

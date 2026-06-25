@@ -1,0 +1,145 @@
+"""
+utils/helpers.py
+Shared utilities, API client, and UI helpers for Streamlit pages.
+"""
+
+import os
+import time
+import requests
+import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+API_URL = os.getenv("API_URL", "http://localhost:8000")
+
+PROVIDER_MODELS = {
+    "NVIDIA": [
+        "meta/llama-3.1-8b-instruct",
+        "meta/llama-3.3-70b-instruct",
+    ],
+}
+
+AVATAR_COLORS = [
+    ("#6C63FF", "#EEF0FF"),
+    ("#1D9E75", "#E1F5EE"),
+    ("#D85A30", "#FAECE7"),
+    ("#BA7517", "#FAEEDA"),
+    ("#378ADD", "#E6F1FB"),
+]
+
+
+# ── API wrappers ───────────────────────────────────────────────────────────────
+
+def api_get(endpoint: str, **params):
+    try:
+        r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Cannot connect to API server. Make sure it's running: `uvicorn api.server:app --port 8000`")
+        return None
+    except Exception as e:
+        st.error(f"API error: {e}")
+        return None
+
+
+def api_post(endpoint: str, data: dict):
+    try:
+        r = requests.post(f"{API_URL}{endpoint}", json=data, timeout=60)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.ConnectionError:
+        st.error("❌ Cannot connect to API server. Make sure it's running: `uvicorn api.server:app --port 8000`")
+        return None
+    except Exception as e:
+        st.error(f"API error: {e}")
+        return None
+
+
+# ── Session state helpers ──────────────────────────────────────────────────────
+
+def init_state():
+    defaults = {
+        "player_name": "",
+        "session_code": "",
+        "session_data": None,
+        "is_host": False,
+        "quiz_active": False,
+        "q_index": 0,
+        "answers": [],
+        "score": 0,
+        "q_start_time": None,
+        "selected_provider": "NVIDIA",
+        "selected_model": "meta/llama-3.1-8b-instruct",
+        "last_generated_qs": None,
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
+
+
+# ── UI helpers ─────────────────────────────────────────────────────────────────
+
+def page_config(title: str = "StudySquad"):
+    st.set_page_config(
+        page_title=title,
+        page_icon="📚",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
+
+def sidebar_identity():
+    """Show player name + LLM settings in sidebar."""
+    with st.sidebar:
+        st.markdown("## 📚 StudySquad")
+        st.divider()
+        name = st.text_input("Your name", value=st.session_state.get("player_name", ""), key="sidebar_name")
+        if name:
+            st.session_state["player_name"] = name
+
+        st.divider()
+        st.markdown("#### 🤖 AI Settings")
+        st.caption("Using NVIDIA only for AI generation.")
+        st.session_state["selected_provider"] = "NVIDIA"
+        st.session_state["selected_model"] = "meta/llama-3.1-8b-instruct"
+
+        st.divider()
+        st.caption(f"API: `{API_URL}`")
+        try:
+            r = requests.get(f"{API_URL}/health", timeout=2)
+            if r.status_code == 200:
+                st.success("API ✅ Online")
+            else:
+                st.warning("API ⚠️ Degraded")
+        except:
+            st.error("API ❌ Offline")
+
+
+def score_pts(time_limit: int, time_taken: float, correct: bool) -> int:
+    """Calculate points: base 100, bonus for speed."""
+    if not correct:
+        return 0
+    base = 100
+    speed_bonus = max(0, int((1 - time_taken / time_limit) * 50))
+    return base + speed_bonus
+
+
+def render_scoreboard(players: list):
+    sorted_p = sorted(players, key=lambda p: p.get("score", 0), reverse=True)
+    for i, p in enumerate(sorted_p):
+        color, bg = AVATAR_COLORS[i % len(AVATAR_COLORS)]
+        medal = ["🥇", "🥈", "🥉"][i] if i < 3 else f"{i+1}."
+        col1, col2, col3 = st.columns([1, 5, 2])
+        with col1:
+            st.markdown(f"<span style='font-size:20px'>{medal}</span>", unsafe_allow_html=True)
+        with col2:
+            st.markdown(
+                f"<div style='background:{bg};padding:6px 12px;border-radius:8px;"
+                f"color:{color};font-weight:500'>{p['name']}"
+                f"{'&nbsp;👑 Host' if p.get('is_host') else ''}</div>",
+                unsafe_allow_html=True
+            )
+        with col3:
+            st.markdown(f"**{p.get('score', 0)} pts**")
