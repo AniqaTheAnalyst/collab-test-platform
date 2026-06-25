@@ -189,9 +189,39 @@ if qs:
         if st.button("👑 Host Session", use_container_width=True):
             st.switch_page("pages/3_Host_Session.py")
 
+
     with col2:
         if st.button("🏃 Solo Test", use_container_width=True):
-            st.switch_page("pages/4_Join_Session.py")
+            player_name = st.session_state.get("player_name", "").strip()
+            if not player_name:
+                st.error("Enter your name in the sidebar before starting a solo test.")
+            else:
+                with st.spinner("Starting solo session…"):
+                    # Create a session for this player
+                    create_result = api_post("/sessions", {
+                        "host_name": player_name,
+                        "question_set_id": qs["id"],
+                        "password": "",
+                    })
+                    if create_result and create_result.get("success"):
+                        sess = create_result["session"]
+                        # Start it immediately (no waiting for others)
+                        start_result = api_post("/sessions/start", {
+                            "code": sess["code"],
+                            "host_name": player_name,
+                        })
+                        if start_result and start_result.get("success"):
+                            started_sess = start_result["session"]
+                            started_sess["questions"] = qs.get("questions", [])
+                            st.session_state["session_code"] = started_sess["code"]
+                            st.session_state["session_data"] = started_sess
+                            st.session_state["is_host"] = True
+                            st.session_state["quiz_active"] = True
+                            st.session_state["q_index"] = 0
+                            st.session_state["answers"] = []
+                            st.session_state["score"] = 0
+                            st.session_state["q_start_time"] = None
+                            st.switch_page("pages/4_Join_Session.py")
 
     with col3:
         if st.button("🗑️ Discard", use_container_width=True):
