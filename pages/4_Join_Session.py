@@ -1,6 +1,6 @@
 """
 pages/4_Join_Session.py
-Clean UI quiz engine (NO logic duplication)
+Clean UI quiz engine + join form for players.
 """
 
 import time
@@ -250,3 +250,72 @@ if st.session_state.get("quiz_active"):
                 st.rerun()
 
     st.stop()
+
+
+# ── JOIN FORM (shown when not yet in a quiz) ──────────────────────────────────
+st.title("🏃 Join a Quiz Session")
+st.markdown("Enter the session code shared by your host to jump in.")
+
+st.divider()
+
+join_name = st.text_input("Your name", value=st.session_state.get("player_name", ""),
+                           placeholder="e.g. Rafi")
+code_input = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
+password_input = st.text_input("Password (leave blank if none)", type="password")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🚀 Join Session", type="primary", use_container_width=True):
+        if not join_name.strip():
+            st.error("Enter your name first.")
+        elif not code_input:
+            st.error("Enter a session code.")
+        else:
+            result = api_post("/sessions/join", {
+                "code": code_input,
+                "player_name": join_name.strip(),
+                "password": password_input,
+            })
+            if result and result.get("success"):
+                sess = result["session"]
+                st.session_state["player_name"] = join_name.strip()
+                st.session_state["session_code"] = sess["code"]
+                st.session_state["session_data"] = sess
+                st.session_state["is_host"] = False
+
+                # Poll until host starts the session (up to ~2 min)
+                with st.spinner("Joined! Waiting for host to start the quiz…"):
+                    for _ in range(60):
+                        time.sleep(2)
+                        updated = api_get(f"/sessions/{sess['code']}")
+                        if updated and updated.get("status") == "started":
+                            qs_data = api_get(f"/question_sets/{updated['question_set_id']}")
+                            updated["questions"] = qs_data.get("questions", []) if qs_data else []
+                            st.session_state["session_data"] = updated
+                            st.session_state["quiz_active"] = True
+                            st.session_state["q_index"] = 0
+                            st.session_state["answers"] = []
+                            st.session_state["score"] = 0
+                            st.session_state["q_start_time"] = None
+                            st.rerun()
+                        elif updated and updated.get("status") == "finished":
+                            st.warning("This session already finished.")
+                            break
+                st.warning("Host didn't start in time. Try refreshing or ask the host.")
+
+with col2:
+    if st.button("📋 Browse open sessions", use_container_width=True):
+        data = api_get("/sessions")
+        open_sessions = data.get("sessions", []) if data else []
+        if open_sessions:
+            st.markdown("### Open Sessions")
+            for s in open_sessions:
+                with st.expander(
+                    f"**{s.get('qs_title', 'Untitled')}** — `{s['code']}` | "
+                    f"👥 {len(s.get('players', []))}/5"
+                ):
+                    st.write(f"Host: **{s['host']}**")
+                    st.caption("🔒 Password required" if s.get("password") else "🔓 Open")
+        else:
+            st.info("No open sessions right now. Ask someone to host one!")
