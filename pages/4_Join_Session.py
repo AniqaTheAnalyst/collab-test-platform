@@ -64,7 +64,7 @@ if st.session_state.get("quiz_active"):
 
     q = questions[q_index]
 
-    # ── TIMER ────────────────────────────────────────────────
+    # ── TIMER (initialise first so header can use it) ─────────────────
     if st.session_state["q_start_time"] is None:
         st.session_state["q_start_time"] = time.time()
 
@@ -73,6 +73,14 @@ if st.session_state.get("quiz_active"):
 
     answered_key = f"answered_{q_index}"
     already_answered = st.session_state.get(answered_key, False)
+
+    # ── QUESTION HEADER ───────────────────────────────────────────────
+    st.markdown(f"### Question {q_index + 1} of {len(questions)}")
+    timer_color = "🟢" if remaining > time_limit * 0.5 else ("🟡" if remaining > time_limit * 0.25 else "🔴")
+    st.markdown(f"{timer_color} **{int(remaining)}s remaining**")
+    st.progress(remaining / time_limit)
+    st.markdown(f"#### {q['question']}")
+    st.divider()
 
     # ── TIMEOUT ────────────────────────────────────────────────
     if remaining <= 0 and not already_answered:
