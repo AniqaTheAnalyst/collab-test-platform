@@ -86,7 +86,6 @@ if st.session_state.get("quiz_active"):
     if remaining <= 0 and not already_answered:
 
         st.session_state[answered_key] = True
-
         st.session_state["answers"].append({
             "q_index": q_index,
             "question": q["question"],
@@ -109,12 +108,22 @@ if st.session_state.get("quiz_active"):
                 "time_taken": time_limit,
             })
 
-        st.warning("⏰ Time's up!")
-        time.sleep(1)
+        st.rerun()  # rerun to show the timeout feedback UI (below)
 
-        st.session_state["q_index"] += 1
-        st.session_state["q_start_time"] = None
-        st.rerun()
+    # ── TIMEOUT FEEDBACK (shown after time runs out, before user clicks Next) ──
+    if already_answered and st.session_state["answers"] and st.session_state["answers"][-1].get("chosen") is None and st.session_state["answers"][-1].get("q_index") == q_index:
+
+        st.error("⏰ Time's up — this question has been skipped.")
+        st.info(f"✅ The correct answer was: **{q['answer']}**")
+        if q.get("explanation"):
+            st.markdown(f"💡 *{q.get('explanation')}*")
+
+        if st.button("Next Question →", use_container_width=True, type="primary"):
+            st.session_state["q_index"] += 1
+            st.session_state["q_start_time"] = None
+            st.rerun()
+
+        st.stop()
 
     # ── SHORT ANSWER ────────────────────────────────────────────────
     if q.get("type") == "short":
@@ -256,6 +265,13 @@ if st.session_state.get("quiz_active"):
                 st.session_state["q_index"] += 1
                 st.session_state["q_start_time"] = None
                 st.rerun()
+
+    # ── AUTO-REFRESH (drives the countdown) ─────────────────────────
+    # Rerun every second while question is unanswered so timer ticks live.
+    # Once answered, stop refreshing so the feedback UI stays stable.
+    if not already_answered:
+        time.sleep(1)
+        st.rerun()
 
     st.stop()
 
