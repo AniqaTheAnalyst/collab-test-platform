@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from typing import Optional
 import time
 
-from components import session_store as store
+from components import supabase_store as store
 from components.llm_chain import generate_questions, explain_wrong_answer
 from dotenv import load_dotenv
 
