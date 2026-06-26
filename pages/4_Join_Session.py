@@ -127,7 +127,7 @@ if st.session_state.get("quiz_active"):
 
                 time_taken = time.time() - st.session_state["q_start_time"]
 
-                got, confidence = evaluate("short", ans, q["answer"])
+                got, confidence = evaluate("short", ans, q["answer"], q.get("question", ""))
 
                 pts = score_pts(time_limit, time_taken, got, confidence)
 
@@ -198,7 +198,7 @@ if st.session_state.get("quiz_active"):
 
                         time_taken = time.time() - st.session_state["q_start_time"]
 
-                        got, confidence = evaluate(q.get("type", "mcq"), opt, q["answer"])
+                        got, confidence = evaluate(q.get("type", "mcq"), opt, q["answer"], q.get("question", ""))
 
                         pts = score_pts(time_limit, time_taken, got, confidence)
 

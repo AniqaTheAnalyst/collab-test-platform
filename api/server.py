@@ -215,7 +215,6 @@ def finish_player(body: FinishRequest):
 
 
 # ── AI Explanation ────────────────────────────────────────────────────────────
-
 class ExplainRequest(BaseModel):
     question: str
     correct_answer: str
@@ -233,6 +232,67 @@ def explain(body: ExplainRequest):
             "NVIDIA", body.model or "meta/llama-3.1-8b-instruct",
         )
         return {"explanation": text}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, str(e))
+
+class EvaluateRequest(BaseModel):
+    question: str
+    correct_answer: str
+    student_answer: str
+    q_type: str = "mcq"
+
+@app.post("/evaluate", tags=["AI"])
+def evaluate_answer(body: EvaluateRequest):
+    """
+    Use NVIDIA LLM to judge whether student_answer is correct for the question.
+    Returns: { correct: bool, confidence: float (0.0–1.0), reasoning: str }
+    """
+    try:
+        from openai import OpenAI
+        import json, re
+
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=os.getenv("NVIDIA_API_KEY"),
+        )
+
+        prompt = f"""You are a strict but fair quiz evaluator.
+
+Question: {body.question}
+Correct answer: {body.correct_answer}
+Student answer: {body.student_answer}
+Question type: {body.q_type}
+
+Decide if the student's answer is correct or meaningfully equivalent to the correct answer.
+For MCQ/truefalse: mark correct if the student's choice clearly refers to the same option, even if the wording differs slightly.
+For short answer: allow paraphrasing and give partial credit.
+
+Respond with ONLY valid JSON, no explanation outside it:
+{{
+  "correct": true or false,
+  "confidence": 0.0 to 1.0,
+  "reasoning": "one sentence explanation"
+}}"""
+
+        response = client.chat.completions.create(
+            model="meta/llama-3.1-8b-instruct",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=200,
+        )
+
+        raw = response.choices[0].message.content.strip()
+        raw = re.sub(r"```json|```", "", raw).strip()
+        result = json.loads(raw)
+
+        return {
+            "correct": bool(result.get("correct", False)),
+            "confidence": float(result.get("confidence", 0.0)),
+            "reasoning": result.get("reasoning", ""),
+        }
+
     except Exception as e:
         import traceback
         traceback.print_exc()
