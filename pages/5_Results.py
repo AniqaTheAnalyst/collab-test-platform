@@ -43,16 +43,16 @@ elif accuracy >= 40:
 else:
     grade, emoji = "Keep practicing", "💪"
 
-# FIX: The old condition checked session_data.get("questions") which is never
-# present on a session object — questions live on the question set, not the
-# session. Instead, publish whenever we have a valid question_set_id.
+# Silently attempt to publish — ignore all errors (data may not exist on Render)
 qset_id = st.session_state.get("active_question_set_id") or (
     st.session_state.get("session_data") or {}
 ).get("question_set_id")
 
 if qset_id:
     try:
-        api_post(f"/question_sets/{qset_id}/publish", {})
+        import requests
+        from utils.helpers import API_URL
+        requests.post(f"{API_URL}/question_sets/{qset_id}/publish", timeout=5)
     except Exception:
         pass
 
@@ -64,19 +64,24 @@ col2.metric("Correct", f"{correct}/{total}")
 col3.metric("Accuracy", f"{accuracy}%")
 col4.metric("Wrong", f"{total - correct}/{total}")
 
-# Accuracy bar
 st.progress(accuracy / 100, text=f"{accuracy}% accuracy")
 
 st.divider()
 
-# ── Leaderboard (session mode) ─────────────────────────────────────────────────
+# ── Leaderboard (session mode) — silently skip if session gone ─────────────────
 
 if code:
-    sess = api_get(f"/sessions/{code}")
-    if sess:
-        st.markdown("### 🏆 Final Leaderboard")
-        render_scoreboard(sess.get("players", []))
-        st.divider()
+    try:
+        import requests
+        from utils.helpers import API_URL
+        r = requests.get(f"{API_URL}/sessions/{code}", timeout=5)
+        if r.status_code == 200:
+            sess = r.json()
+            st.markdown("### 🏆 Final Leaderboard")
+            render_scoreboard(sess.get("players", []))
+            st.divider()
+    except Exception:
+        pass
 
 # ── Answer review ──────────────────────────────────────────────────────────────
 
@@ -160,4 +165,4 @@ with col_c:
         st.switch_page("app.py")
 
 st.divider()
-st.caption("StudySquad v1.0 · Results are stored locally in /data/sessions.json")
+st.caption("StudySquad v1.0 · AI-powered by NVIDIA")
