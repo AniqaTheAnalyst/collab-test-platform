@@ -7,6 +7,9 @@ import os
 import requests
 import streamlit as st
 from dotenv import load_dotenv
+def get_user_id(player_name: str) -> str:
+    return player_name.lower().strip()
+
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 

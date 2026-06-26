@@ -6,8 +6,10 @@ Clean UI quiz engine + join form for players.
 import time
 import streamlit as st
 import sys, os
-
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from utils.helpers import get_user_id
 
 from utils.helpers import (
     page_config, sidebar_identity, init_state,
@@ -37,6 +39,7 @@ if st.session_state.get("quiz_active"):
 
     code = sess.get("code", "")
     player_name = st.session_state["player_name"]
+    user_id = get_user_id(player_name)
 
     # FIX: api_get can return None (API offline); guard before calling .get()
     questions = sess.get("questions") or []
@@ -307,6 +310,7 @@ with col1:
             })
             if result and result.get("success"):
                 sess = result["session"]
+                st.session_state["user_id"] = get_user_id(join_name.strip())
                 st.session_state["player_name"] = join_name.strip()
                 st.session_state["session_code"] = sess["code"]
                 st.session_state["session_data"] = sess

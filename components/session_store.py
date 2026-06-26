@@ -184,7 +184,7 @@ def join_session(code: str, player_name: str, password: str = "") -> tuple[dict,
             raise ValueError(f"Session full ({MAX_PLAYERS} players max)")
         if target["password"] and target["password"] != password:
             raise ValueError("Wrong password")
-        if any(p["name"] == player_name for p in target["players"]):
+        if any(p["name"].lower().strip() == player_name.lower().strip() for p in target["players"]):
             raise ValueError("Name already taken in this session")
         player = {
             "name": player_name,

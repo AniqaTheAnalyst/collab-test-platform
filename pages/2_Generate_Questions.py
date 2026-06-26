@@ -5,6 +5,7 @@ Core AI question generation page with full prompt customisation.
 
 import streamlit as st
 import sys, os
+from utils.helpers import get_user_id
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from utils.helpers import (page_config, sidebar_identity, init_state,
@@ -193,6 +194,7 @@ if qs:
     with col2:
         if st.button("🏃 Solo Test", use_container_width=True):
             player_name = st.session_state.get("player_name", "").strip()
+            user_id = get_user_id(st.session_state.get("player_name", ""))
             if not player_name:
                 st.error("Enter your name in the sidebar before starting a solo test.")
             else:

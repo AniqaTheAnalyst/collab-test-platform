@@ -5,6 +5,9 @@ Post-quiz results: score, leaderboard, answer review, AI explanations.
 
 import streamlit as st
 import sys, os
+import time
+
+from utils.helpers import get_user_id
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -19,34 +22,49 @@ sidebar_identity()
 
 # ── MUST DEFINE FIRST ───────────────────────────────────────────────
 player_name = st.session_state.get("player_name", "You")
+user_id = get_user_id(player_name)
 code = st.session_state.get("session_code", "")
 
 provider = "NVIDIA"
 model = "meta/llama-3.1-8b-instruct"
 
-# ── FETCH SESSION DATA (SOURCE OF TRUTH) ───────────────────────────
+# ── SESSION STATE ───────────────────────────────────────────────────
 sess = None
 players = []
 
+# ── FETCH SESSION DATA (LIVE + SAFE) ───────────────────────────────
 if code:
     leaderboard_placeholder = st.empty()
 
-    for _ in range(30):  # run for ~30 seconds
+    for _ in range(30):
         sess = api_get(f"/sessions/{code}")
 
         if sess:
             st.session_state["session_data"] = sess
+            players = sess.get("players", [])
 
             with leaderboard_placeholder.container():
                 st.markdown("### 🔥 Live Leaderboard")
-                render_scoreboard(sess.get("players", []))
+                render_scoreboard(players)
+
+            # stop early if finished
+            if sess.get("status") == "finished":
+                break
 
         time.sleep(1)
-    if sess:
-        st.session_state["session_data"] = sess
-        players = sess.get("players", [])
 
-current_player = next((p for p in players if p["name"] == player_name), None)
+# ── FINAL SNAPSHOT ──────────────────────────────────────────────────
+final_players = sess.get("players", []) if sess else []
+
+st.markdown("## 🏁 Final Leaderboard")
+render_scoreboard(final_players)
+
+# ── GET CURRENT PLAYER SCORE ───────────────────────────────────────
+current_player = next(
+    (p for p in players if p.get("name") == player_name),
+    None
+)
+
 score = current_player.get("score", 0) if current_player else 0
 
 # ── ANSWERS (FALLBACK SAFE) ─────────────────────────────────────────
@@ -99,19 +117,6 @@ st.progress(accuracy / 100, text=f"{accuracy}% accuracy")
 
 st.divider()
 
-# ── LEADERBOARD (REAL SOURCE = SUPABASE) ────────────────────────────
-if code:
-    try:
-        sess = api_get(f"/sessions/{code}")
-        if sess:
-            st.session_state["session_data"] = sess
-
-            st.markdown("### 🏆 Final Leaderboard")
-            render_scoreboard(sess.get("players", []))
-            st.divider()
-    except Exception:
-        pass
-
 # ── ANSWER REVIEW ──────────────────────────────────────────────────
 st.markdown("### 📋 Answer Review")
 
@@ -121,7 +126,7 @@ for a in answers:
     pts = a.get("pts", 0)
 
     with st.expander(
-        f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question'])>80 else ''} | {pts} pts"
+        f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question']) > 80 else ''} | {pts} pts"
     ):
         st.markdown(f"**Question:** {a['question']}")
 
