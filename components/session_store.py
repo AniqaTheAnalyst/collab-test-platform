@@ -129,7 +129,7 @@ def create_session(host_name: str, question_set_id: str, password: str = "") -> 
             "qs_title": qs.get("title", "Untitled"),
             "time_limit": qs.get("time_limit", 15),
             "password": password,
-            "status": "waiting",   # waiting | started | finished
+            "status": "waiting",
             "players": [
                 {
                     "name": host_name,
@@ -228,7 +228,10 @@ def submit_answer(code: str, player_name: str, q_index: int,
                             "q_index": q_index,
                             "chosen": chosen,
                             "correct": correct,
-                            "got": chosen == correct,
+                            # FIX: trust pts from frontend (AI-evaluated) instead
+                            # of recomputing via string equality which breaks when
+                            # the LLM stores answers in a different format.
+                            "got": pts > 0,
                             "pts": pts,
                             "time_taken": round(time_taken, 2),
                         })

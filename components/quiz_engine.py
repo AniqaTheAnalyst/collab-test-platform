@@ -6,8 +6,6 @@ Central quiz logic — AI-powered evaluation + scoring engine.
 import os
 import requests
 
-API_URL = os.getenv("API_URL", "https://collab-test-platform.onrender.com")
-
 
 def normalize(text):
     if text is None:
@@ -15,18 +13,24 @@ def normalize(text):
     return str(text).strip().lower()
 
 
+def _api_url() -> str:
+    # FIX 4: read at call time, not import time, so load_dotenv() has already
+    # been called by the Streamlit page before this is ever executed.
+    return os.getenv("API_URL", "https://collab-test-platform.onrender.com")
+
+
 # ── AI EVALUATION ──────────────────────────────────────────────────────────────
 def evaluate(q_type: str, user: str, correct: str, question: str = "") -> tuple:
     user_n = normalize(user)
     correct_n = normalize(correct)
 
-    # Fast path: exact match
+    # Fast path: exact match — no need to call AI
     if user_n == correct_n:
         return True, 1.0
 
     try:
         resp = requests.post(
-            f"{API_URL}/evaluate",
+            f"{_api_url()}/evaluate",
             json={
                 "question": question,
                 "correct_answer": correct,

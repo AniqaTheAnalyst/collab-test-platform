@@ -83,9 +83,12 @@ if st.session_state.get("quiz_active"):
     st.divider()
 
     # ── TIMEOUT ────────────────────────────────────────────────
+    timed_out_key = f"timed_out_{q_index}"
+
     if remaining <= 0 and not already_answered:
 
         st.session_state[answered_key] = True
+        st.session_state[timed_out_key] = True  # FIX 3: dedicated flag
         st.session_state["answers"].append({
             "q_index": q_index,
             "question": q["question"],
@@ -108,10 +111,11 @@ if st.session_state.get("quiz_active"):
                 "time_taken": time_limit,
             })
 
-        st.rerun()  # rerun to show the timeout feedback UI (below)
+        st.rerun()
 
     # ── TIMEOUT FEEDBACK (shown after time runs out, before user clicks Next) ──
-    if already_answered and st.session_state["answers"] and st.session_state["answers"][-1].get("chosen") is None and st.session_state["answers"][-1].get("q_index") == q_index:
+    # FIX 3: use dedicated timed_out key — no longer relies on fragile answers[-1] check
+    if st.session_state.get(timed_out_key):
 
         st.error("⏰ Time's up — this question has been skipped.")
         st.info(f"✅ The correct answer was: **{q['answer']}**")

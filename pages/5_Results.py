@@ -148,7 +148,8 @@ with col_a:
         st.session_state["score"] = 0
         st.session_state["q_start_time"] = None
         keys_to_del = [k for k in st.session_state if k.startswith("answered_") or
-                       k.startswith("chosen_") or k.startswith("ai_exp_")]
+                       k.startswith("chosen_") or k.startswith("ai_exp_") or
+                       k.startswith("timed_out_")]  # FIX 3
         for k in keys_to_del:
             del st.session_state[k]
         st.switch_page("pages/4_Join_Session.py")

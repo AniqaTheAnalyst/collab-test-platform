@@ -58,6 +58,7 @@ if st.session_state.get("session_code") and st.session_state.get("is_host"):
                         st.session_state["q_index"] = 0
                         st.session_state["answers"] = []
                         st.session_state["score"] = 0
+                        st.session_state["q_start_time"] = None  # FIX 2
                         st.switch_page("pages/4_Join_Session.py")
             else:
                 st.info("Waiting for at least 1 more player to join…")
@@ -72,6 +73,7 @@ if st.session_state.get("session_code") and st.session_state.get("is_host"):
                         st.session_state["q_index"] = 0
                         st.session_state["answers"] = []
                         st.session_state["score"] = 0
+                        st.session_state["q_start_time"] = None  # FIX 2
                         st.switch_page("pages/4_Join_Session.py")
 
         with col2:
