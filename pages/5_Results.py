@@ -5,21 +5,52 @@ Post-quiz results: score, leaderboard, answer review, AI explanations.
 
 import streamlit as st
 import sys, os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from utils.helpers import (page_config, sidebar_identity, init_state,
-                            api_post, api_get, render_scoreboard)
+from utils.helpers import (
+    page_config, sidebar_identity, init_state,
+    api_post, api_get, render_scoreboard
+)
 
 page_config("Results")
 init_state()
 sidebar_identity()
 
-answers = st.session_state.get("answers", [])
-score = st.session_state.get("score", 0)
+# ── MUST DEFINE FIRST ───────────────────────────────────────────────
 player_name = st.session_state.get("player_name", "You")
 code = st.session_state.get("session_code", "")
+
 provider = "NVIDIA"
 model = "meta/llama-3.1-8b-instruct"
+
+# ── FETCH SESSION DATA (SOURCE OF TRUTH) ───────────────────────────
+sess = None
+players = []
+
+if code:
+    leaderboard_placeholder = st.empty()
+
+    for _ in range(30):  # run for ~30 seconds
+        sess = api_get(f"/sessions/{code}")
+
+        if sess:
+            st.session_state["session_data"] = sess
+
+            with leaderboard_placeholder.container():
+                st.markdown("### 🔥 Live Leaderboard")
+                render_scoreboard(sess.get("players", []))
+
+        time.sleep(1)
+    if sess:
+        st.session_state["session_data"] = sess
+        players = sess.get("players", [])
+
+current_player = next((p for p in players if p["name"] == player_name), None)
+score = current_player.get("score", 0) if current_player else 0
+
+# ── ANSWERS (FALLBACK SAFE) ─────────────────────────────────────────
+answers = st.session_state.get("answers", [])
 
 if not answers:
     st.title("📊 Results")
@@ -28,8 +59,7 @@ if not answers:
         st.switch_page("pages/4_Join_Session.py")
     st.stop()
 
-# ── Score summary ──────────────────────────────────────────────────────────────
-
+# ── SCORE CALCULATION ───────────────────────────────────────────────
 total = len(answers)
 correct = sum(1 for a in answers if a.get("got"))
 accuracy = round((correct / total) * 100) if total else 0
@@ -43,7 +73,7 @@ elif accuracy >= 40:
 else:
     grade, emoji = "Keep practicing", "💪"
 
-# Silently attempt to publish — ignore all errors (data may not exist on Render)
+# ── AUTO PUBLISH QUESTION SET ───────────────────────────────────────
 qset_id = st.session_state.get("active_question_set_id") or (
     st.session_state.get("session_data") or {}
 ).get("question_set_id")
@@ -56,6 +86,7 @@ if qset_id:
     except Exception:
         pass
 
+# ── HEADER ──────────────────────────────────────────────────────────
 st.title(f"{emoji} {grade}, {player_name}!")
 
 col1, col2, col3, col4 = st.columns(4)
@@ -68,23 +99,20 @@ st.progress(accuracy / 100, text=f"{accuracy}% accuracy")
 
 st.divider()
 
-# ── Leaderboard (session mode) — silently skip if session gone ─────────────────
-
+# ── LEADERBOARD (REAL SOURCE = SUPABASE) ────────────────────────────
 if code:
     try:
-        import requests
-        from utils.helpers import API_URL
-        r = requests.get(f"{API_URL}/sessions/{code}", timeout=5)
-        if r.status_code == 200:
-            sess = r.json()
+        sess = api_get(f"/sessions/{code}")
+        if sess:
+            st.session_state["session_data"] = sess
+
             st.markdown("### 🏆 Final Leaderboard")
             render_scoreboard(sess.get("players", []))
             st.divider()
     except Exception:
         pass
 
-# ── Answer review ──────────────────────────────────────────────────────────────
-
+# ── ANSWER REVIEW ──────────────────────────────────────────────────
 st.markdown("### 📋 Answer Review")
 
 for a in answers:
@@ -92,7 +120,9 @@ for a in answers:
     icon = "✅" if got else "❌"
     pts = a.get("pts", 0)
 
-    with st.expander(f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question'])>80 else ''} | {pts} pts"):
+    with st.expander(
+        f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question'])>80 else ''} | {pts} pts"
+    ):
         st.markdown(f"**Question:** {a['question']}")
 
         chosen = a.get("chosen")
@@ -108,12 +138,12 @@ for a in answers:
             st.warning("⏰ No answer submitted (time ran out)")
             st.info(f"✅ Correct answer: **{correct_ans}**")
 
-        built_in_exp = a.get("explanation", "")
-        if built_in_exp:
-            st.markdown(f"*{built_in_exp}*")
+        if a.get("explanation"):
+            st.markdown(f"*{a.get('explanation')}*")
 
         if not got:
             exp_key = f"ai_exp_{a['q_index']}"
+
             if exp_key not in st.session_state:
                 if st.button(f"🤖 Get AI explanation", key=f"btn_exp_{a['q_index']}"):
                     with st.spinner("Thinking…"):
@@ -125,6 +155,7 @@ for a in answers:
                             "provider": provider,
                             "model": model,
                         })
+
                     if result:
                         st.session_state[exp_key] = result.get("explanation", "")
                         st.rerun()
@@ -134,8 +165,7 @@ for a in answers:
 
 st.divider()
 
-# ── Actions ────────────────────────────────────────────────────────────────────
-
+# ── ACTIONS ─────────────────────────────────────────────────────────
 st.markdown("### What next?")
 
 col_a, col_b, col_c = st.columns(3)
@@ -147,11 +177,18 @@ with col_a:
         st.session_state["answers"] = []
         st.session_state["score"] = 0
         st.session_state["q_start_time"] = None
-        keys_to_del = [k for k in st.session_state if k.startswith("answered_") or
-                       k.startswith("chosen_") or k.startswith("ai_exp_") or
-                       k.startswith("timed_out_")]  # FIX 3
+
+        keys_to_del = [
+            k for k in st.session_state
+            if k.startswith("answered_")
+            or k.startswith("chosen_")
+            or k.startswith("ai_exp_")
+            or k.startswith("timed_out_")
+        ]
+
         for k in keys_to_del:
             del st.session_state[k]
+
         st.switch_page("pages/4_Join_Session.py")
 
 with col_b:
