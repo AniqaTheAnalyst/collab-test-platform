@@ -148,3 +148,9 @@ def render_scoreboard(players: list):
             )
         with col3:
             st.markdown(f"**{p.get('score', 0)} pts**")
+
+
+
+
+def get_user_id(name: str) -> str:
+    return (name or "").lower().strip()
