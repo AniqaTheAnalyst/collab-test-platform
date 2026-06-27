@@ -109,23 +109,39 @@ def save_material(title: str, text: str, uploader: str, tags: str = "") -> dict:
         "title":    title,
         "text":     text,
         "tags":     tags,
-        "is_public": False,
+        "is_public": True,  # materials always public so they appear in the list
+        # store uploader in user_id as text stub until Phase 2 auth
+        "user_id":  None,
     }
     resp = _client.table("materials").insert(row).execute()
     data = resp.data[0]
-    # match old shape (had 'uploader' field)
+    # inject uploader for frontend compatibility (not a DB column yet)
     data["uploader"] = uploader
+    # store uploader name in tags if tags empty, for display
+    if not data.get("tags"):
+        data["tags"] = f"uploaded by {uploader}"
     return data
+
+
+def _inject_uploader(m: dict) -> dict:
+    """Extract uploader name from tags for display until Phase 2 auth."""
+    if not m.get("uploader"):
+        tags = m.get("tags", "")
+        if tags.startswith("uploaded by "):
+            m["uploader"] = tags.replace("uploaded by ", "")
+        else:
+            m["uploader"] = "unknown"
+    return m
 
 
 def get_all_materials() -> list:
     resp = _client.table("materials").select("*").order("created_at", desc=True).execute()
-    return resp.data or []
+    return [_inject_uploader(m) for m in (resp.data or [])]
 
 
 def get_material(mid: str) -> Optional[dict]:
     resp = _client.table("materials").select("*").eq("id", mid).execute()
-    return resp.data[0] if resp.data else None
+    return _inject_uploader(resp.data[0]) if resp.data else None
 
 
 # ── Question sets ─────────────────────────────────────────────────────────────

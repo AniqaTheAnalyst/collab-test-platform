@@ -7,9 +7,6 @@ import os
 import requests
 import streamlit as st
 from dotenv import load_dotenv
-def get_user_id(player_name: str) -> str:
-    return player_name.lower().strip()
-
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -34,6 +31,12 @@ AVATAR_COLORS = [
 ]
 
 
+# ── Stub — will be replaced with real Supabase Auth in Phase 2 ────────────────
+def get_user_id(name: str) -> str:
+    """Temporary: use lowercased name as user ID until auth is implemented."""
+    return (name or "").lower().strip()
+
+
 # ── API wrappers ───────────────────────────────────────────────────────────────
 
 def api_get(endpoint: str, **params):
@@ -42,7 +45,7 @@ def api_get(endpoint: str, **params):
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
-        st.error("❌ Cannot connect to API server. Make sure it's running: `uvicorn api.server:app --port 8000`")
+        st.error("❌ Cannot connect to API server.")
         return None
     except Exception as e:
         st.error(f"API error: {e}")
@@ -55,7 +58,7 @@ def api_post(endpoint: str, data: dict):
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
-        st.error("❌ Cannot connect to API server. Make sure it's running: `uvicorn api.server:app --port 8000`")
+        st.error("❌ Cannot connect to API server.")
         return None
     except Exception as e:
         st.error(f"API error: {e}")
@@ -96,7 +99,6 @@ def page_config(title: str = "StudySquad"):
 
 
 def sidebar_identity():
-    """Show player name + LLM settings in sidebar."""
     with st.sidebar:
         st.markdown("## 📚 StudySquad")
         st.divider()
@@ -122,16 +124,14 @@ def sidebar_identity():
             st.error("API ❌ Offline")
 
 
-# ── FIX: score_pts removed from helpers — import from components.quiz_engine instead.
-# Keeping this thin wrapper so any legacy import doesn't hard-crash; it delegates
-# to the canonical implementation.
 def score_pts(time_limit: int, time_taken: float, correct: bool, confidence: float = 1.0) -> int:
-    """Thin wrapper — canonical logic lives in components/quiz_engine.py."""
     from components.quiz_engine import score_pts as _score_pts
     return _score_pts(time_limit, time_taken, correct, confidence)
 
 
 def render_scoreboard(players: list):
+    if not players:
+        return
     sorted_p = sorted(players, key=lambda p: p.get("score", 0), reverse=True)
     for i, p in enumerate(sorted_p):
         color, bg = AVATAR_COLORS[i % len(AVATAR_COLORS)]
@@ -148,9 +148,3 @@ def render_scoreboard(players: list):
             )
         with col3:
             st.markdown(f"**{p.get('score', 0)} pts**")
-
-
-
-
-def get_user_id(name: str) -> str:
-    return (name or "").lower().strip()

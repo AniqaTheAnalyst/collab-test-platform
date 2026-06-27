@@ -5,70 +5,21 @@ Post-quiz results: score, leaderboard, answer review, AI explanations.
 
 import streamlit as st
 import sys, os
-import time
-
-from utils.helpers import get_user_id
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from utils.helpers import (
-    page_config, sidebar_identity, init_state,
-    api_post, api_get, render_scoreboard
-)
+from utils.helpers import (page_config, sidebar_identity, init_state,
+                            api_post, api_get, render_scoreboard, API_URL)
 
 page_config("Results")
 init_state()
 sidebar_identity()
 
-# ── MUST DEFINE FIRST ───────────────────────────────────────────────
+answers = st.session_state.get("answers", [])
+score = st.session_state.get("score", 0)
 player_name = st.session_state.get("player_name", "You")
-user_id = get_user_id(player_name)
 code = st.session_state.get("session_code", "")
-
 provider = "NVIDIA"
 model = "meta/llama-3.1-8b-instruct"
-
-# ── SESSION STATE ───────────────────────────────────────────────────
-sess = None
-players = []
-
-# ── FETCH SESSION DATA (LIVE + SAFE) ───────────────────────────────
-if code:
-    leaderboard_placeholder = st.empty()
-
-    for _ in range(30):
-        sess = api_get(f"/sessions/{code}")
-
-        if sess:
-            st.session_state["session_data"] = sess
-            players = sess.get("players", [])
-
-            with leaderboard_placeholder.container():
-                st.markdown("### 🔥 Live Leaderboard")
-                render_scoreboard(players)
-
-            # stop early if finished
-            if sess.get("status") == "finished":
-                break
-
-        time.sleep(1)
-
-# ── FINAL SNAPSHOT ──────────────────────────────────────────────────
-final_players = sess.get("players", []) if sess else []
-
-st.markdown("## 🏁 Final Leaderboard")
-render_scoreboard(final_players)
-
-# ── GET CURRENT PLAYER SCORE ───────────────────────────────────────
-current_player = next(
-    (p for p in players if p.get("name") == player_name),
-    None
-)
-
-score = current_player.get("score", 0) if current_player else 0
-
-# ── ANSWERS (FALLBACK SAFE) ─────────────────────────────────────────
-answers = st.session_state.get("answers", [])
 
 if not answers:
     st.title("📊 Results")
@@ -77,7 +28,7 @@ if not answers:
         st.switch_page("pages/4_Join_Session.py")
     st.stop()
 
-# ── SCORE CALCULATION ───────────────────────────────────────────────
+# ── Score summary ──────────────────────────────────────────────────────────────
 total = len(answers)
 correct = sum(1 for a in answers if a.get("got"))
 accuracy = round((correct / total) * 100) if total else 0
@@ -91,20 +42,18 @@ elif accuracy >= 40:
 else:
     grade, emoji = "Keep practicing", "💪"
 
-# ── AUTO PUBLISH QUESTION SET ───────────────────────────────────────
+# Silently publish question set
 qset_id = st.session_state.get("active_question_set_id") or (
     st.session_state.get("session_data") or {}
 ).get("question_set_id")
 
 if qset_id:
     try:
-        import requests
-        from utils.helpers import API_URL
-        requests.post(f"{API_URL}/question_sets/{qset_id}/publish", timeout=5)
+        import requests as _requests
+        _requests.post(f"{API_URL}/question_sets/{qset_id}/publish", timeout=5)
     except Exception:
         pass
 
-# ── HEADER ──────────────────────────────────────────────────────────
 st.title(f"{emoji} {grade}, {player_name}!")
 
 col1, col2, col3, col4 = st.columns(4)
@@ -112,12 +61,25 @@ col1.metric("Total Score", f"{score} pts")
 col2.metric("Correct", f"{correct}/{total}")
 col3.metric("Accuracy", f"{accuracy}%")
 col4.metric("Wrong", f"{total - correct}/{total}")
-
 st.progress(accuracy / 100, text=f"{accuracy}% accuracy")
-
 st.divider()
 
-# ── ANSWER REVIEW ──────────────────────────────────────────────────
+# ── Leaderboard — only for multiplayer sessions, silently skip if gone ─────────
+if code:
+    try:
+        import requests as _requests
+        r = _requests.get(f"{API_URL}/sessions/{code}", timeout=5)
+        if r.status_code == 200:
+            sess = r.json()
+            players = sess.get("players", [])
+            if len(players) > 1:  # only show leaderboard for multiplayer
+                st.markdown("### 🏆 Final Leaderboard")
+                render_scoreboard(players)
+                st.divider()
+    except Exception:
+        pass
+
+# ── Answer review ──────────────────────────────────────────────────────────────
 st.markdown("### 📋 Answer Review")
 
 for a in answers:
@@ -125,11 +87,8 @@ for a in answers:
     icon = "✅" if got else "❌"
     pts = a.get("pts", 0)
 
-    with st.expander(
-        f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question']) > 80 else ''} | {pts} pts"
-    ):
+    with st.expander(f"{icon} Q{a['q_index']+1}: {a['question'][:80]}{'…' if len(a['question'])>80 else ''} | {pts} pts"):
         st.markdown(f"**Question:** {a['question']}")
-
         chosen = a.get("chosen")
         correct_ans = a.get("correct")
 
@@ -148,7 +107,6 @@ for a in answers:
 
         if not got:
             exp_key = f"ai_exp_{a['q_index']}"
-
             if exp_key not in st.session_state:
                 if st.button(f"🤖 Get AI explanation", key=f"btn_exp_{a['q_index']}"):
                     with st.spinner("Thinking…"):
@@ -160,7 +118,6 @@ for a in answers:
                             "provider": provider,
                             "model": model,
                         })
-
                     if result:
                         st.session_state[exp_key] = result.get("explanation", "")
                         st.rerun()
@@ -170,9 +127,8 @@ for a in answers:
 
 st.divider()
 
-# ── ACTIONS ─────────────────────────────────────────────────────────
+# ── Actions ────────────────────────────────────────────────────────────────────
 st.markdown("### What next?")
-
 col_a, col_b, col_c = st.columns(3)
 
 with col_a:
@@ -182,18 +138,11 @@ with col_a:
         st.session_state["answers"] = []
         st.session_state["score"] = 0
         st.session_state["q_start_time"] = None
-
-        keys_to_del = [
-            k for k in st.session_state
-            if k.startswith("answered_")
-            or k.startswith("chosen_")
-            or k.startswith("ai_exp_")
-            or k.startswith("timed_out_")
-        ]
-
+        keys_to_del = [k for k in st.session_state if k.startswith("answered_") or
+                       k.startswith("chosen_") or k.startswith("ai_exp_") or
+                       k.startswith("timed_out_")]
         for k in keys_to_del:
             del st.session_state[k]
-
         st.switch_page("pages/4_Join_Session.py")
 
 with col_b:
