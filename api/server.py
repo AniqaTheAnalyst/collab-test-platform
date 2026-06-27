@@ -302,8 +302,12 @@ def my_history(user: dict = Depends(get_current_user)):
     Returns all sessions the authenticated user has participated in,
     with their personal score and answers.
     """
-    return {"history": store.get_user_session_history(user["id"])}
-
+    try:
+        return {"history": store.get_user_session_history(user["id"])}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"History error: {type(e).__name__}: {str(e)}")
 
 # ── AI Explanation ─────────────────────────────────────────────────────────────
 
