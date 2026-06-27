@@ -5,6 +5,12 @@ Personal dashboard — history, materials, question sets, all scoped to signed-i
 
 import streamlit as st
 import sys, os
+import streamlit as st
+
+if st.session_state.get("sb_access_token"):
+    st.warning("DEBUG TOKEN — remove this after testing")
+    st.code(st.session_state["sb_access_token"])
+    
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from utils.helpers import page_config, sidebar_identity, init_state, api_get, api_post
