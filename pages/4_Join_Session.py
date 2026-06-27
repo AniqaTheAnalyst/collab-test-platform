@@ -10,20 +10,23 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from utils.helpers import (
     page_config, sidebar_identity, init_state,
-    api_post, api_get, get_user_id
+    api_post, api_get, get_user_id,
 )
 from components.quiz_engine import evaluate, score_pts
+from components.auth import require_auth
 
 page_config("Quiz")
 init_state()
 sidebar_identity()
+
+user = require_auth()
 
 
 def get_session():
     return st.session_state.get("session_data")
 
 
-# ── MAIN QUIZ FLOW ────────────────────────────────────────────────
+# ── MAIN QUIZ FLOW ─────────────────────────────────────────────────────────────
 if st.session_state.get("quiz_active"):
 
     sess = get_session()
@@ -32,7 +35,7 @@ if st.session_state.get("quiz_active"):
         st.error("Session lost")
         st.stop()
 
-    code = sess.get("code", "")
+    code        = sess.get("code", "")
     player_name = st.session_state["player_name"]
 
     questions = sess.get("questions") or []
@@ -44,9 +47,9 @@ if st.session_state.get("quiz_active"):
         questions = qs_data.get("questions", [])
 
     time_limit = sess.get("time_limit", 15)
-    q_index = st.session_state["q_index"]
+    q_index    = st.session_state["q_index"]
 
-    # ── FINISH ────────────────────────────────────────────────
+    # ── FINISH ─────────────────────────────────────────────────────────────────
     if q_index >= len(questions):
         if code:
             api_post("/sessions/finish", {"code": code, "player_name": player_name})
@@ -56,39 +59,35 @@ if st.session_state.get("quiz_active"):
 
     q = questions[q_index]
 
-    # ── TIMER ────────────────────────────────────────────────
+    # ── TIMER ──────────────────────────────────────────────────────────────────
     if st.session_state["q_start_time"] is None:
         st.session_state["q_start_time"] = time.time()
 
-    elapsed = time.time() - st.session_state["q_start_time"]
+    elapsed   = time.time() - st.session_state["q_start_time"]
     remaining = max(0, time_limit - elapsed)
 
-    answered_key = f"answered_{q_index}"
+    answered_key    = f"answered{q_index}"
     already_answered = st.session_state.get(answered_key, False)
 
-    # ── QUESTION HEADER ───────────────────────────────────────────────
+    # ── QUESTION HEADER ────────────────────────────────────────────────────────
     st.markdown(f"### Question {q_index + 1} of {len(questions)}")
     timer_color = "🟢" if remaining > time_limit * 0.5 else ("🟡" if remaining > time_limit * 0.25 else "🔴")
-    st.markdown(f"{timer_color} **{int(remaining)}s remaining**")
+    st.markdown(f"{timer_color} {int(remaining)}s remaining")
     st.progress(remaining / time_limit)
     st.markdown(f"#### {q['question']}")
     st.divider()
 
-    # ── TIMEOUT ────────────────────────────────────────────────
-    timed_out_key = f"timed_out_{q_index}"
+    # ── TIMEOUT ────────────────────────────────────────────────────────────────
+    timed_out_key = f"timed_out{q_index}"
 
     if remaining <= 0 and not already_answered:
-        st.session_state[answered_key] = True
+        st.session_state[answered_key]  = True
         st.session_state[timed_out_key] = True
         st.session_state["answers"].append({
-            "q_index": q_index,
-            "question": q["question"],
-            "chosen": None,
-            "correct": q["answer"],
-            "got": False,
-            "confidence": 0.0,
-            "pts": 0,
-            "explanation": q.get("explanation", "")
+            "q_index": q_index, "question": q["question"],
+            "chosen": None, "correct": q["answer"],
+            "got": False, "confidence": 0.0,
+            "pts": 0, "explanation": q.get("explanation", "")
         })
         if code:
             api_post("/sessions/answer", {
@@ -98,29 +97,29 @@ if st.session_state.get("quiz_active"):
             })
         st.rerun()
 
-    # ── TIMEOUT FEEDBACK ──────────────────────────────────────
+    # ── TIMEOUT FEEDBACK ───────────────────────────────────────────────────────
     if st.session_state.get(timed_out_key):
         st.error("⏰ Time's up — this question has been skipped.")
-        st.info(f"✅ The correct answer was: **{q['answer']}**")
+        st.info(f"✅ The correct answer was: {q['answer']}")
         if q.get("explanation"):
-            st.markdown(f"💡 *{q.get('explanation')}*")
+            st.markdown(f"💡 {q.get('explanation')}")
         if st.button("Next Question →", use_container_width=True, type="primary"):
-            st.session_state["q_index"] += 1
-            st.session_state["q_start_time"] = None
+            st.session_state["q_index"]      += 1
+            st.session_state["q_start_time"]  = None
             st.rerun()
         st.stop()
 
-    # ── SHORT ANSWER ────────────────────────────────────────────────
+    # ── SHORT ANSWER ───────────────────────────────────────────────────────────
     if q.get("type") == "short":
         if not already_answered:
-            ans = st.text_input("Your answer:", key=f"short_{q_index}")
-            if st.button("Submit", key=f"sub_{q_index}"):
+            ans = st.text_input("Your answer:", key=f"short{q_index}")
+            if st.button("Submit", key=f"sub{q_index}"):
                 time_taken = time.time() - st.session_state["q_start_time"]
                 got, confidence = evaluate("short", ans, q["answer"], q.get("question", ""))
                 pts = score_pts(time_limit, time_taken, got, confidence)
                 st.session_state["score"] += pts
                 st.session_state[answered_key] = True
-                st.session_state[f"chosen_{q_index}"] = ans
+                st.session_state[f"chosen{q_index}"] = ans
                 st.session_state["answers"].append({
                     "q_index": q_index, "question": q["question"],
                     "chosen": ans, "correct": q["answer"],
@@ -135,8 +134,8 @@ if st.session_state.get("quiz_active"):
                     })
                 st.rerun()
         else:
-            chosen = st.session_state.get(f"chosen_{q_index}")
-            got = any(a.get("got") for a in st.session_state["answers"] if a["q_index"] == q_index)
+            chosen = st.session_state.get(f"chosen{q_index}")
+            got    = any(a.get("got") for a in st.session_state["answers"] if a["q_index"] == q_index)
             if got:
                 st.success(f"✅ Correct: {chosen}")
             else:
@@ -144,24 +143,24 @@ if st.session_state.get("quiz_active"):
             if q.get("explanation"):
                 st.info(q["explanation"])
             if st.button("Next →"):
-                st.session_state["q_index"] += 1
+                st.session_state["q_index"]     += 1
                 st.session_state["q_start_time"] = None
                 st.rerun()
 
-    # ── MCQ / TRUE FALSE ────────────────────────────────────────────────
+    # ── MCQ / TRUE FALSE ───────────────────────────────────────────────────────
     else:
         options = q.get("options", [])
         if not already_answered:
             cols = st.columns(min(len(options), 4))
             for i, opt in enumerate(options):
                 with cols[i % len(cols)]:
-                    if st.button(opt, key=f"opt_{q_index}_{i}"):
+                    if st.button(opt, key=f"opt_{q_index}{i}"):
                         time_taken = time.time() - st.session_state["q_start_time"]
                         got, confidence = evaluate(q.get("type", "mcq"), opt, q["answer"], q.get("question", ""))
                         pts = score_pts(time_limit, time_taken, got, confidence)
                         st.session_state["score"] += pts
                         st.session_state[answered_key] = True
-                        st.session_state[f"chosen_{q_index}"] = opt
+                        st.session_state[f"chosen{q_index}"] = opt
                         st.session_state["answers"].append({
                             "q_index": q_index, "question": q["question"],
                             "chosen": opt, "correct": q["answer"],
@@ -177,7 +176,7 @@ if st.session_state.get("quiz_active"):
                         st.rerun()
         else:
             chosen = st.session_state.get(f"chosen_{q_index}")
-            got = any(a.get("got") for a in st.session_state["answers"] if a["q_index"] == q_index)
+            got    = any(a.get("got") for a in st.session_state["answers"] if a["q_index"] == q_index)
             for opt in options:
                 if opt == q["answer"] and got:
                     st.success(f"✅ {opt}")
@@ -190,11 +189,11 @@ if st.session_state.get("quiz_active"):
             if q.get("explanation"):
                 st.info(q["explanation"])
             if st.button("Next →", use_container_width=True):
-                st.session_state["q_index"] += 1
+                st.session_state["q_index"]     += 1
                 st.session_state["q_start_time"] = None
                 st.rerun()
 
-    # ── AUTO-REFRESH ──────────────────────────────────────────
+    # ── AUTO-REFRESH ───────────────────────────────────────────────────────────
     if not already_answered:
         time.sleep(1)
         st.rerun()
@@ -202,14 +201,14 @@ if st.session_state.get("quiz_active"):
     st.stop()
 
 
-# ── JOIN FORM ─────────────────────────────────────────────────────────────────
+# ── JOIN FORM ──────────────────────────────────────────────────────────────────
 st.title("🏃 Join a Quiz Session")
 st.markdown("Enter the session code shared by your host to jump in.")
 st.divider()
 
-join_name = st.text_input("Your name", value=st.session_state.get("player_name", ""),
-                           placeholder="e.g. Rafi")
-code_input = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
+join_name      = st.text_input("Your name", value=st.session_state.get("player_name", ""),
+                                placeholder="e.g. Rafi")
+code_input     = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
 password_input = st.text_input("Password (leave blank if none)", type="password")
 
 col1, col2 = st.columns(2)
@@ -222,16 +221,16 @@ with col1:
             st.error("Enter a session code.")
         else:
             result = api_post("/sessions/join", {
-                "code": code_input,
+                "code":        code_input,
                 "player_name": join_name.strip(),
-                "password": password_input,
+                "password":    password_input,
             })
             if result and result.get("success"):
                 sess = result["session"]
-                st.session_state["player_name"] = join_name.strip()
+                st.session_state["player_name"]  = join_name.strip()
                 st.session_state["session_code"] = sess["code"]
                 st.session_state["session_data"] = sess
-                st.session_state["is_host"] = False
+                st.session_state["is_host"]      = False
 
                 with st.spinner("Joined! Waiting for host to start the quiz…"):
                     for _ in range(60):
@@ -240,12 +239,12 @@ with col1:
                         if updated and updated.get("status") == "started":
                             qs_data = api_get(f"/question_sets/{updated['question_set_id']}")
                             updated["questions"] = qs_data.get("questions", []) if qs_data else []
-                            st.session_state["session_data"] = updated
-                            st.session_state["quiz_active"] = True
-                            st.session_state["q_index"] = 0
-                            st.session_state["answers"] = []
-                            st.session_state["score"] = 0
-                            st.session_state["q_start_time"] = None
+                            st.session_state["session_data"]  = updated
+                            st.session_state["quiz_active"]   = True
+                            st.session_state["q_index"]       = 0
+                            st.session_state["answers"]       = []
+                            st.session_state["score"]         = 0
+                            st.session_state["q_start_time"]  = None
                             st.rerun()
                         elif updated and updated.get("status") == "finished":
                             st.warning("This session already finished.")
@@ -254,16 +253,16 @@ with col1:
 
 with col2:
     if st.button("📋 Browse open sessions", use_container_width=True):
-        data = api_get("/sessions")
+        data          = api_get("/sessions")
         open_sessions = data.get("sessions", []) if data else []
         if open_sessions:
             st.markdown("### Open Sessions")
             for s in open_sessions:
                 with st.expander(
-                    f"**{s.get('qs_title', 'Untitled')}** — `{s['code']}` | "
+                    f"{s.get('qs_title', 'Untitled')} — {s['code']} | "
                     f"👥 {len(s.get('players', []))}/5"
                 ):
-                    st.write(f"Host: **{s['host']}**")
+                    st.write(f"Host: {s['host']}")
                     st.caption("🔒 Password required" if s.get("password") else "🔓 Open")
         else:
             st.info("No open sessions right now. Ask someone to host one!")

@@ -1,6 +1,7 @@
 """
 utils/helpers.py
 Shared utilities, API client, and UI helpers for Streamlit pages.
+All API calls now inject the user's JWT token as a Bearer header.
 """
 
 import os
@@ -10,10 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-API_URL = os.getenv(
-    "API_URL",
-    "https://collab-test-platform.onrender.com"
-)
+API_URL = os.getenv("API_URL", "https://collab-test-platform.onrender.com")
 
 PROVIDER_MODELS = {
     "NVIDIA": [
@@ -31,17 +29,37 @@ AVATAR_COLORS = [
 ]
 
 
-# ── Stub — will be replaced with real Supabase Auth in Phase 2 ────────────────
-def get_user_id(name: str) -> str:
-    """Temporary: use lowercased name as user ID until auth is implemented."""
+# ── Auth helpers (imported here so pages only need one import) ─────────────────
+
+from components.auth import require_auth, get_current_user, get_access_token, sign_out
+
+
+def get_user_id(name: str = "") -> str:
+    """Return authenticated user's ID. Falls back to lowercased name for legacy."""
+    user = get_current_user()
+    if user:
+        return user["id"]
     return (name or "").lower().strip()
+
+
+def _auth_headers() -> dict:
+    """Return Authorization header dict with current user's JWT, if logged in."""
+    token = get_access_token()
+    if token:
+        return {"Authorization": f"Bearer {token}"}
+    return {}
 
 
 # ── API wrappers ───────────────────────────────────────────────────────────────
 
-def api_get(endpoint: str, **params):
+def api_get(endpoint: str, params=None):
     try:
-        r = requests.get(f"{API_URL}{endpoint}", params=params, timeout=10)
+        r = requests.get(
+            f"{API_URL}{endpoint}",
+            params=params,
+            headers=_auth_headers(),
+            timeout=10,
+        )
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
@@ -54,7 +72,12 @@ def api_get(endpoint: str, **params):
 
 def api_post(endpoint: str, data: dict):
     try:
-        r = requests.post(f"{API_URL}{endpoint}", json=data, timeout=60)
+        r = requests.post(
+            f"{API_URL}{endpoint}",
+            json=data,
+            headers=_auth_headers(),
+            timeout=60,
+        )
         r.raise_for_status()
         return r.json()
     except requests.exceptions.ConnectionError:
@@ -86,6 +109,16 @@ def init_state():
         if k not in st.session_state:
             st.session_state[k] = v
 
+    # Auto-populate player_name from auth if not set
+    if not st.session_state.get("player_name"):
+        user = get_current_user()
+        if user:
+            # Use display name from pending signup or fall back to email prefix
+            display = st.session_state.pop("pending_display_name", None)
+            if not display:
+                display = user["email"].split("@")[0]
+            st.session_state["player_name"] = display
+
 
 # ── UI helpers ─────────────────────────────────────────────────────────────────
 
@@ -99,21 +132,39 @@ def page_config(title: str = "StudySquad"):
 
 
 def sidebar_identity():
+    user = get_current_user()
     with st.sidebar:
         st.markdown("## 📚 StudySquad")
         st.divider()
-        name = st.text_input("Your name", value=st.session_state.get("player_name", ""), key="sidebar_name")
-        if name:
-            st.session_state["player_name"] = name
+
+        if user:
+            # Show authenticated user info
+            st.markdown(f"👤 **{st.session_state.get('player_name', user['email'])}**")
+            st.caption(user["email"])
+            name = st.text_input(
+                "Display name",
+                value=st.session_state.get("player_name", ""),
+                key="sidebar_name",
+            )
+            if name:
+                st.session_state["player_name"] = name
+
+            if st.button("Sign Out", use_container_width=True):
+                sign_out()
+                st.switch_page("pages/0_Auth.py")
+        else:
+            st.warning("Not signed in")
+            if st.button("Sign In", use_container_width=True):
+                st.switch_page("pages/0_Auth.py")
 
         st.divider()
         st.markdown("#### 🤖 AI Settings")
-        st.caption("Using NVIDIA only for AI generation.")
+        st.caption("Using NVIDIA for AI generation.")
         st.session_state["selected_provider"] = "NVIDIA"
         st.session_state["selected_model"] = "meta/llama-3.1-8b-instruct"
 
         st.divider()
-        st.caption(f"API: `{API_URL}`")
+        st.caption(f"API: {API_URL}")
         try:
             r = requests.get(f"{API_URL}/health", timeout=2)
             if r.status_code == 200:
@@ -144,7 +195,7 @@ def render_scoreboard(players: list):
                 f"<div style='background:{bg};padding:6px 12px;border-radius:8px;"
                 f"color:{color};font-weight:500'>{p['name']}"
                 f"{'&nbsp;👑 Host' if p.get('is_host') else ''}</div>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
         with col3:
             st.markdown(f"**{p.get('score', 0)} pts**")

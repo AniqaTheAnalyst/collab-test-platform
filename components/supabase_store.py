@@ -1,7 +1,7 @@
 """
 components/supabase_store.py
-Supabase-backed persistent store — drop-in replacement for session_store.py.
-All function signatures match session_store.py exactly so server.py needs zero changes.
+Supabase-backed persistent store — all queries scoped by user_id.
+Function signatures match what server.py expects.
 """
 
 import os
@@ -10,42 +10,35 @@ import string
 import time
 from datetime import datetime
 from typing import Optional
-import os
-import os
-from datetime import datetime
-from typing import Optional
+
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+SUPABASE_URL     = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
-if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env")
+if not SUPABASE_URL or not SUPABASE_ANON_KEY:
+    raise RuntimeError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env")
 
-client: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+_client: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
 MAX_PLAYERS = 5
 
 
-# ── Code generator ────────────────────────────────────────────────────────────
+# ── Code generator ─────────────────────────────────────────────────────────────
 
 def _make_code() -> str:
     letters = "".join(random.choices(string.ascii_uppercase, k=4))
-    digits = "".join(random.choices(string.digits, k=4))
+    digits  = "".join(random.choices(string.digits, k=4))
     return f"{letters}-{digits}"
 
 
-# ── Internal session builder ──────────────────────────────────────────────────
-# Reconstructs the same dict shape that server.py / frontend expect,
-# assembling players + answers from their own tables.
+# ── Session assembler ──────────────────────────────────────────────────────────
 
 def _build_session_dict(session_row: dict) -> dict:
-    """
-    Fetches session_players (+ their answers) and returns a session dict
-    that looks identical to what the old JSON store returned.
-    """
+    """Fetch players + answers and return a unified session dict."""
     sid = session_row["id"]
 
     players_resp = (
@@ -68,11 +61,11 @@ def _build_session_dict(session_row: dict) -> dict:
         )
         answers = [
             {
-                "q_index": a["q_index"],
-                "chosen":  a["chosen"],
-                "correct": a["correct"],
-                "got":     a["got"],
-                "pts":     a["pts"],
+                "q_index":    a["q_index"],
+                "chosen":     a["chosen"],
+                "correct":    a["correct"],
+                "got":        a["got"],
+                "pts":        a["pts"],
                 "time_taken": a["time_taken"],
             }
             for a in (answers_resp.data or [])
@@ -85,118 +78,133 @@ def _build_session_dict(session_row: dict) -> dict:
             "finished":  p["finished"],
             "joined_at": p["joined_at"],
             "answers":   answers,
-            # keep the Supabase player id accessible for internal use
-            "_player_id": p["id"],
+            "player_id": p["id"],
+            "user_id":   p.get("user_id"),
         })
 
     return {
-        "id":              session_row["id"],
-        "code":            session_row["code"],
-        "host":            session_row["host_name"],
-        "question_set_id": session_row["question_set_id"],
-        "qs_title":        session_row.get("qs_title", ""),
-        "password":        session_row.get("password", ""),
-        "status":          session_row["status"],
-        "players":         players,
-        "created_at":      session_row["created_at"],
-        "started_at":      session_row.get("started_at"),
-        "finished_at":     session_row.get("finished_at"),
+        "id":               session_row["id"],
+        "code":             session_row["code"],
+        "host":             session_row["host_name"],
+        "question_set_id":  session_row["question_set_id"],
+        "qs_title":         session_row.get("qs_title", ""),
+        "password":         session_row.get("password", ""),
+        "status":           session_row["status"],
+        "players":          players,
+        "created_at":       session_row["created_at"],
+        "started_at":       session_row.get("started_at"),
+        "finished_at":      session_row.get("finished_at"),
+        "host_user_id":     session_row.get("host_user_id"),
     }
 
 
-# ── Materials ─────────────────────────────────────────────────────────────────
+# ── Materials ──────────────────────────────────────────────────────────────────
 
-def save_material(title: str, text: str, uploader: str, tags: str = "") -> dict:
+def save_material(title: str, text: str, user_id: str, tags: str = "") -> dict:
     row = {
-        "title":    title,
-        "text":     text,
-        "tags":     tags,
-        "is_public": True,  # materials always public so they appear in the list
-        # store uploader in user_id as text stub until Phase 2 auth
-        "user_id":  None,
+        "title":     title,
+        "text":      text,
+        "tags":      tags,
+        "is_public": False,       # private by default — only visible to owner
+        "user_id":   user_id,
     }
     resp = _client.table("materials").insert(row).execute()
     data = resp.data[0]
-    # inject uploader for frontend compatibility (not a DB column yet)
-    data["uploader"] = uploader
-    # store uploader name in tags if tags empty, for display
-    if not data.get("tags"):
-        data["tags"] = f"uploaded by {uploader}"
+    data["uploader"] = user_id
     return data
 
 
-def _inject_uploader(m: dict) -> dict:
-    """Extract uploader name from tags for display until Phase 2 auth."""
-    if not m.get("uploader"):
-        tags = m.get("tags", "")
-        if tags.startswith("uploaded by "):
-            m["uploader"] = tags.replace("uploaded by ", "")
-        else:
-            m["uploader"] = "unknown"
-    return m
-
-
-def get_all_materials() -> list:
-    resp = _client.table("materials").select("*").order("created_at", desc=True).execute()
-    return [_inject_uploader(m) for m in (resp.data or [])]
-
-
-def get_material(mid: str) -> Optional[dict]:
-    resp = _client.table("materials").select("*").eq("id", mid).execute()
-    return _inject_uploader(resp.data[0]) if resp.data else None
-
-
-# ── Question sets ─────────────────────────────────────────────────────────────
-
-def save_question_set(qs: dict, uploader: str = "") -> dict:
-    row = {
-        "title":       qs.get("title"),
-        "subject":     qs.get("subject"),
-        "time_limit":  qs.get("time_limit", 15),
-        "difficulty":  qs.get("difficulty"),
-        "questions":   qs.get("questions"),   # stored as JSONB
-        "is_public":   False,
-    }
-    resp = _client.table("question_sets").insert(row).execute()
-    saved = resp.data[0]
-    # return a dict that looks like what the old store returned
-    return {**qs, **saved, "uploader": uploader, "is_public": False}
-
-
-def get_all_question_sets() -> list:
+def get_user_materials(user_id: str) -> list:
+    """Return all materials uploaded by this user."""
     resp = (
-        _client.table("question_sets")
+        _client.table("materials")
         .select("*")
-        .eq("is_public", True)
+        .eq("user_id", user_id)
         .order("created_at", desc=True)
         .execute()
     )
     return resp.data or []
 
 
-def publish_question_set(qid: str) -> Optional[dict]:
+def get_material(mid: str, user_id: str) -> Optional[dict]:
+    """Return a material only if it belongs to user_id."""
     resp = (
-        _client.table("question_sets")
-        .update({"is_public": True})
-        .eq("id", qid)
+        _client.table("materials")
+        .select("*")
+        .eq("id", mid)
+        .eq("user_id", user_id)
         .execute()
     )
     return resp.data[0] if resp.data else None
 
 
-def get_question_set(qid: str) -> Optional[dict]:
+# ── Question sets ──────────────────────────────────────────────────────────────
+
+def save_question_set(qs: dict, user_id: str) -> dict:
+    row = {
+        "title":      qs.get("title"),
+        "subject":    qs.get("subject"),
+        "time_limit": qs.get("time_limit", 15),
+        "difficulty": qs.get("difficulty"),
+        "questions":  qs.get("questions"),   # stored as JSONB
+        "is_public":  False,
+        "user_id":    user_id,
+    }
+    resp = _client.table("question_sets").insert(row).execute()
+    saved = resp.data[0]
+    return {**qs, **saved, "uploader": user_id, "is_public": False}
+
+
+def get_user_question_sets(user_id: str) -> list:
+    """Return all question sets created by this user."""
+    resp = (
+        _client.table("question_sets")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return resp.data or []
+
+
+def publish_question_set(qid: str, user_id: str) -> Optional[dict]:
+    """Publish a question set — only if it belongs to user_id."""
+    resp = (
+        _client.table("question_sets")
+        .update({"is_public": True})
+        .eq("id", qid)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    return resp.data[0] if resp.data else None
+
+
+def get_question_set(qid: str, user_id: Optional[str] = None) -> Optional[dict]:
+    """
+    Return a question set.
+    If user_id provided, must match (owner check).
+    If not provided (internal use like session lookup), returns regardless of owner.
+    """
+    query = _client.table("question_sets").select("*").eq("id", qid)
+    if user_id:
+        query = query.eq("user_id", user_id)
+    resp = query.execute()
+    return resp.data[0] if resp.data else None
+
+
+def _get_question_set_any(qid: str) -> Optional[dict]:
+    """Internal: fetch question set without user scope (for session creation)."""
     resp = _client.table("question_sets").select("*").eq("id", qid).execute()
     return resp.data[0] if resp.data else None
 
 
-# ── Sessions ──────────────────────────────────────────────────────────────────
+# ── Sessions ───────────────────────────────────────────────────────────────────
 
-def create_session(host_name: str, question_set_id: str, password: str = "") -> dict:
-    qs = get_question_set(question_set_id)
+def create_session(host_name: str, question_set_id: str, password: str = "", user_id: str = "") -> dict:
+    qs = _get_question_set_any(question_set_id)
     if not qs:
         raise ValueError("Question set not found")
 
-    # generate a unique code
     code = _make_code()
     while True:
         check = _client.table("sessions").select("id").eq("code", code).execute()
@@ -205,20 +213,21 @@ def create_session(host_name: str, question_set_id: str, password: str = "") -> 
         code = _make_code()
 
     session_row = {
-        "code":            code,
-        "host_name":       host_name,
-        "question_set_id": question_set_id,
-        "qs_title":        qs.get("title", "Untitled"),
-        "password":        password,
-        "status":          "waiting",
+        "code":             code,
+        "host_name":        host_name,
+        "host_user_id":     user_id,
+        "question_set_id":  question_set_id,
+        "qs_title":         qs.get("title", "Untitled"),
+        "password":         password,
+        "status":           "waiting",
     }
     resp = _client.table("sessions").insert(session_row).execute()
     session = resp.data[0]
 
-    # insert host as first player
     player_row = {
         "session_id":   session["id"],
         "display_name": host_name,
+        "user_id":      user_id,
         "is_host":      True,
         "score":        0,
         "q_index":      0,
@@ -259,7 +268,7 @@ def get_open_sessions() -> list:
     return [_build_session_dict(s) for s in (resp.data or [])]
 
 
-def join_session(code: str, player_name: str, password: str = "") -> tuple[dict, dict]:
+def join_session(code: str, player_name: str, password: str = "", user_id: str = "") -> tuple:
     resp = (
         _client.table("sessions")
         .select("*")
@@ -277,7 +286,6 @@ def join_session(code: str, player_name: str, password: str = "") -> tuple[dict,
     if session_row.get("password") and session_row["password"] != password:
         raise ValueError("Wrong password")
 
-    # check player count
     count_resp = (
         _client.table("session_players")
         .select("id", count="exact")
@@ -287,7 +295,6 @@ def join_session(code: str, player_name: str, password: str = "") -> tuple[dict,
     if (count_resp.count or 0) >= MAX_PLAYERS:
         raise ValueError(f"Session full ({MAX_PLAYERS} players max)")
 
-    # check name uniqueness
     name_check = (
         _client.table("session_players")
         .select("id")
@@ -301,6 +308,7 @@ def join_session(code: str, player_name: str, password: str = "") -> tuple[dict,
     player_row = {
         "session_id":   sid,
         "display_name": player_name,
+        "user_id":      user_id,
         "is_host":      False,
         "score":        0,
         "q_index":      0,
@@ -310,8 +318,7 @@ def join_session(code: str, player_name: str, password: str = "") -> tuple[dict,
     p_data = p_resp.data[0]
 
     session_dict = _build_session_dict(session_row)
-
-    player_dict = {
+    player_dict  = {
         "name":      player_name,
         "is_host":   False,
         "score":     0,
@@ -346,7 +353,6 @@ def start_session(code: str, host_name: str) -> dict:
 
 def submit_answer(code: str, player_name: str, q_index: int,
                   chosen: str, correct: str, pts: int, time_taken: float) -> dict:
-    # get session
     s_resp = (
         _client.table("sessions")
         .select("*")
@@ -358,7 +364,6 @@ def submit_answer(code: str, player_name: str, q_index: int,
     session_row = s_resp.data[0]
     sid = session_row["id"]
 
-    # get player
     p_resp = (
         _client.table("session_players")
         .select("*")
@@ -371,11 +376,11 @@ def submit_answer(code: str, player_name: str, q_index: int,
     player = p_resp.data[0]
     pid = player["id"]
 
-    # insert answer row
     answer_row = {
         "session_id":   sid,
         "player_id":    pid,
         "display_name": player_name,
+        "user_id":      player.get("user_id"),
         "q_index":      q_index,
         "chosen":       chosen,
         "correct":      correct,
@@ -385,7 +390,6 @@ def submit_answer(code: str, player_name: str, q_index: int,
     }
     _client.table("answers").insert(answer_row).execute()
 
-    # update player score and q_index
     _client.table("session_players").update({
         "score":   player["score"] + pts,
         "q_index": q_index + 1,
@@ -406,12 +410,10 @@ def finish_player(code: str, player_name: str) -> dict:
     session_row = s_resp.data[0]
     sid = session_row["id"]
 
-    # mark this player finished
     _client.table("session_players").update({"finished": True}).eq(
         "session_id", sid
     ).eq("display_name", player_name).execute()
 
-    # check if all players are done
     all_resp = (
         _client.table("session_players")
         .select("finished")
@@ -425,6 +427,62 @@ def finish_player(code: str, player_name: str) -> dict:
             "finished_at": datetime.utcnow().isoformat(),
         }).eq("id", sid).execute()
 
-    # re-fetch to get updated status
     updated = _client.table("sessions").select("*").eq("id", sid).execute()
     return _build_session_dict(updated.data[0])
+
+
+# ── User history ───────────────────────────────────────────────────────────────
+
+def get_user_session_history(user_id: str) -> list:
+    """
+    Return all sessions where the user participated as a player,
+    with their personal score and answers for each.
+    """
+    # Find all player rows for this user
+    players_resp = (
+        _client.table("session_players")
+        .select("*, sessions(*)")
+        .eq("user_id", user_id)
+        .order("joined_at", desc=True)
+        .execute()
+    )
+
+    history = []
+    for p in (players_resp.data or []):
+        session_row = p.get("sessions", {})
+        if not session_row:
+            continue
+
+        answers_resp = (
+            _client.table("answers")
+            .select("*")
+            .eq("player_id", p["id"])
+            .order("q_index")
+            .execute()
+        )
+        answers = answers_resp.data or []
+
+        total    = len(answers)
+        correct  = sum(1 for a in answers if a.get("got"))
+        accuracy = round((correct / total) * 100) if total else 0
+
+        history.append({
+            "session_id":      session_row.get("id"),
+            "session_code":    session_row.get("code"),
+            "qs_title":        session_row.get("qs_title", "Untitled"),
+            "question_set_id": session_row.get("question_set_id"),
+            "session_status":  session_row.get("status"),
+            "started_at":      session_row.get("started_at"),
+            "finished_at":     session_row.get("finished_at"),
+            "is_host":         p.get("is_host", False),
+            "display_name":    p.get("display_name"),
+            "score":           p.get("score", 0),
+            "q_index":         p.get("q_index", 0),
+            "finished":        p.get("finished", False),
+            "total_questions": total,
+            "correct":         correct,
+            "accuracy":        accuracy,
+            "answers":         answers,
+        })
+
+    return history

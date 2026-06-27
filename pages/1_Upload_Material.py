@@ -7,48 +7,47 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from utils.helpers import page_config, sidebar_identity, init_state, api_post, api_get
+from components.auth import require_auth
 
 page_config("Upload Material")
 init_state()
 sidebar_identity()
 
+user = require_auth()
+
 st.title("📄 Upload Study Material")
-st.markdown("Paste notes, textbook excerpts, or any content you want to study. Any team member can be the uploader.")
+st.markdown("Paste notes, textbook excerpts, or any content you want to study. Materials are private to your account.")
 
 st.divider()
 
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    uploader = st.text_input("Your name (who's uploading)", value=st.session_state.get("player_name", ""),
-                              placeholder="e.g. Rafi")
     title = st.text_input("Topic / Subject title", placeholder="e.g. Photosynthesis, Chapter 5: Cell Division")
-    text = st.text_area("Study content", height=300,
-                         placeholder="Paste your lecture notes, textbook paragraphs, definitions, key points...\n\nTip: More detailed material = better AI questions!")
+    text  = st.text_area(
+        "Study content", height=300,
+        placeholder="Paste your lecture notes, textbook paragraphs, definitions, key points…\n\nTip: More detailed material = better AI questions!"
+    )
     tags = st.text_input("Tags (optional, comma-separated)", placeholder="biology, midterm, chapter-3")
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("💾 Save Material", type="primary", use_container_width=True):
-            if not uploader.strip():
-                st.error("Enter your name")
-            elif not title.strip():
+            if not title.strip():
                 st.error("Enter a topic title")
             elif not text.strip():
                 st.error("Paste some content")
             elif len(text.strip()) < 50:
                 st.warning("Add more content for better AI questions (at least a paragraph)")
             else:
-                with st.spinner("Saving..."):
+                with st.spinner("Saving…"):
                     result = api_post("/materials", {
                         "title": title.strip(),
-                        "text": text.strip(),
-                        "uploader": uploader.strip(),
-                        "tags": tags.strip(),
+                        "text":  text.strip(),
+                        "tags":  tags.strip(),
                     })
                 if result and result.get("success"):
-                    st.success(f"✅ Material saved! You can now generate questions from it.")
-                    st.session_state["player_name"] = uploader.strip()
+                    st.success("✅ Material saved!")
                     if st.button("→ Generate Questions from this"):
                         st.switch_page("pages/2_Generate_Questions.py")
 
@@ -59,18 +58,18 @@ with col1:
 with col2:
     st.markdown("#### 📋 Tips for good material")
     st.info("""
-**What works well:**
+What works well:
 - Lecture notes with key points
 - Textbook paragraphs
 - Definitions and explanations
 - Lists of facts or concepts
 - Any structured text
 
-**Ideal length:**
+Ideal length:
 - 200–2000 words
-- More content = more variety in questions
+- More content = more variety
 
-**Supported formats:**
+Supported formats:
 - Plain text (paste directly)
 - Bullet points
 - Numbered lists
@@ -79,23 +78,27 @@ with col2:
 
     st.markdown("#### 📊 Material stats")
     if text:
-        words = len(text.split())
-        chars = len(text)
+        words  = len(text.split())
+        chars  = len(text)
         st.metric("Words", words)
         st.metric("Characters", chars)
         est_q = min(20, max(3, words // 50))
         st.metric("Estimated max questions", est_q)
 
 st.divider()
-st.markdown("### 📚 All Saved Materials")
+st.markdown("### 📚 Your Saved Materials")
 
 data = api_get("/materials")
 if data and data.get("materials"):
     mats = sorted(data["materials"], key=lambda m: m.get("created_at", ""), reverse=True)
     for m in mats:
-        with st.expander(f"**{m['title']}** — uploaded by {m['uploader']} | {len(m['text'].split())} words"):
+        with st.expander(f"{m['title']} | {len(m['text'].split())} words | {m.get('created_at','')[:10]}"):
             if m.get("tags"):
                 st.caption(f"Tags: {m['tags']}")
             st.write(m["text"][:500] + ("…" if len(m["text"]) > 500 else ""))
+            if st.button("🤖 Generate questions", key=f"gen_{m['id']}"):
+                st.session_state["prefill_material"] = m["text"]
+                st.session_state["prefill_title"]    = m["title"]
+                st.switch_page("pages/2_Generate_Questions.py")
 else:
-    st.info("No materials saved yet.")
+    st.info("No materials saved yet. Upload something above!")

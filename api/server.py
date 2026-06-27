@@ -1,23 +1,31 @@
 """
 api/server.py
 FastAPI REST backend for StudySquad.
+All protected endpoints require a valid Supabase JWT in the Authorization header.
 Run with: uvicorn api.server:app --reload --port 8000
 """
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 import time
+import os
+import jwt as pyjwt          # pip install PyJWT
+import requests as _requests
 
 from components import supabase_store as store
 from components.llm_chain import generate_questions, explain_wrong_answer
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+
+SUPABASE_URL     = os.getenv("SUPABASE_URL", "")
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")  # Settings → API → JWT Secret
 
 app = FastAPI(
     title="StudySquad API",
@@ -32,62 +40,120 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_bearer = HTTPBearer(auto_error=False)
 
-# ── Health ────────────────────────────────────────────────────────────────────
+
+# ── Auth dependency ────────────────────────────────────────────────────────────
+
+def _decode_token(token: str) -> dict:
+    """
+    Decode and verify a Supabase JWT.
+    Returns the payload dict (which contains 'sub' = user UUID).
+    Raises HTTPException(401) on failure.
+    """
+    if not SUPABASE_JWT_SECRET:
+        raise HTTPException(500, "SUPABASE_JWT_SECRET not configured on server.")
+    try:
+        payload = pyjwt.decode(
+            token,
+            SUPABASE_JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated",
+        )
+        return payload
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(401, "Token expired. Please sign in again.")
+    except pyjwt.InvalidTokenError as e:
+        raise HTTPException(401, f"Invalid token: {e}")
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> dict:
+    """
+    FastAPI dependency — extracts and verifies the bearer token.
+    Returns {"id": user_uuid, "email": str}.
+    Raises 401 if missing or invalid.
+    """
+    if not credentials:
+        raise HTTPException(401, "Authentication required. Please sign in.")
+    payload = _decode_token(credentials.credentials)
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(401, "Token missing user ID.")
+    return {
+        "id": user_id,
+        "email": payload.get("email", ""),
+    }
+
+
+def optional_user(credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> Optional[dict]:
+    """Like get_current_user but returns None instead of raising — for public endpoints."""
+    if not credentials:
+        return None
+    try:
+        return get_current_user(credentials)
+    except HTTPException:
+        return None
+
+
+# ── Health ─────────────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["Health"])
 def root():
     return {"status": "ok", "service": "StudySquad API v1.0"}
+
 
 @app.get("/health", tags=["Health"])
 def health():
     return {"status": "healthy", "timestamp": time.time()}
 
 
-# ── Materials ─────────────────────────────────────────────────────────────────
+# ── Materials ──────────────────────────────────────────────────────────────────
 
 class MaterialCreate(BaseModel):
     title: str
     text: str
-    uploader: str
     tags: str = ""
 
+
 @app.post("/materials", tags=["Materials"])
-def create_material(body: MaterialCreate):
-    m = store.save_material(body.title, body.text, body.uploader, body.tags)
+def create_material(body: MaterialCreate, user: dict = Depends(get_current_user)):
+    m = store.save_material(body.title, body.text, user["id"], body.tags)
     return {"success": True, "material": m}
 
+
 @app.get("/materials", tags=["Materials"])
-def list_materials():
-    return {"materials": store.get_all_materials()}
+def list_materials(user: dict = Depends(get_current_user)):
+    """Returns only materials uploaded by the authenticated user."""
+    return {"materials": store.get_user_materials(user["id"])}
+
 
 @app.get("/materials/{mid}", tags=["Materials"])
-def get_material(mid: str):
-    m = store.get_material(mid)
+def get_material(mid: str, user: dict = Depends(get_current_user)):
+    m = store.get_material(mid, user["id"])
     if not m:
         raise HTTPException(404, "Material not found")
     return m
 
 
-# ── Question Generation ───────────────────────────────────────────────────────
+# ── Question Generation ────────────────────────────────────────────────────────
 
 class GenerateRequest(BaseModel):
     material: str
     num_questions: int = 5
-    question_type: str = "mcq"         # mcq | truefalse | short | mixed
-    difficulty: str = "medium"          # easy | medium | hard
-    time_limit: int = 15               # seconds per question
-    focus_area: str = ""               # optional topic focus
-    tone: str = "academic"             # academic | casual | challenging
-    custom_prompt: str = ""            # free-text prompt engineering
+    question_type: str = "mcq"
+    difficulty: str = "medium"
+    time_limit: int = 15
+    focus_area: str = ""
+    tone: str = "academic"
+    custom_prompt: str = ""
     provider: str = "NVIDIA"
     model: str = "meta/llama-3.1-8b-instruct"
     temperature: float = 0.4
     save: bool = True
-    uploader: str = ""
+
 
 @app.post("/generate", tags=["Questions"])
-def generate(body: GenerateRequest):
+def generate(body: GenerateRequest, user: dict = Depends(get_current_user)):
     try:
         qs = generate_questions(
             material=body.material,
@@ -103,47 +169,54 @@ def generate(body: GenerateRequest):
             temperature=body.temperature,
         )
         if body.save:
-            qs = store.save_question_set(qs, body.uploader)
+            qs = store.save_question_set(qs, user["id"])
         return {"success": True, "question_set": qs}
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(500, str(e))
 
+
 @app.get("/question_sets", tags=["Questions"])
-def list_question_sets():
-    return {"question_sets": store.get_all_question_sets()}
+def list_question_sets(user: dict = Depends(get_current_user)):
+    """Returns only question sets created by the authenticated user."""
+    return {"question_sets": store.get_user_question_sets(user["id"])}
+
 
 @app.post("/question_sets/{qid}/publish", tags=["Questions"])
-def publish_question_set(qid: str):
-    qs = store.publish_question_set(qid)
+def publish_question_set(qid: str, user: dict = Depends(get_current_user)):
+    qs = store.publish_question_set(qid, user["id"])
     if not qs:
         raise HTTPException(404, "Question set not found")
     return {"success": True, "question_set": qs}
 
+
 @app.get("/question_sets/{qid}", tags=["Questions"])
-def get_question_set(qid: str):
-    qs = store.get_question_set(qid)
+def get_question_set(qid: str, user: dict = Depends(get_current_user)):
+    qs = store.get_question_set(qid, user["id"])
     if not qs:
         raise HTTPException(404, "Question set not found")
     return qs
 
 
-# ── Sessions ──────────────────────────────────────────────────────────────────
+# ── Sessions ───────────────────────────────────────────────────────────────────
 
 class CreateSessionRequest(BaseModel):
     host_name: str
     question_set_id: str
     password: str = ""
 
+
 class JoinSessionRequest(BaseModel):
     code: str
     player_name: str
     password: str = ""
 
+
 class StartSessionRequest(BaseModel):
     code: str
     host_name: str
+
 
 class SubmitAnswerRequest(BaseModel):
     code: str
@@ -154,48 +227,54 @@ class SubmitAnswerRequest(BaseModel):
     pts: int
     time_taken: float = 0.0
 
+
 class FinishRequest(BaseModel):
     code: str
     player_name: str
 
 
 @app.post("/sessions", tags=["Sessions"])
-def create_session(body: CreateSessionRequest):
+def create_session(body: CreateSessionRequest, user: dict = Depends(get_current_user)):
     try:
-        session = store.create_session(body.host_name, body.question_set_id, body.password)
+        session = store.create_session(body.host_name, body.question_set_id, body.password, user["id"])
         return {"success": True, "session": session}
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.get("/sessions", tags=["Sessions"])
-def list_open_sessions():
+def list_open_sessions(user: dict = Depends(get_current_user)):
     return {"sessions": store.get_open_sessions()}
 
+
 @app.get("/sessions/{code}", tags=["Sessions"])
-def get_session(code: str):
+def get_session(code: str, user: dict = Depends(get_current_user)):
     s = store.get_session_by_code(code)
     if not s:
         raise HTTPException(404, "Session not found")
     return s
 
+
 @app.post("/sessions/join", tags=["Sessions"])
-def join_session(body: JoinSessionRequest):
+def join_session(body: JoinSessionRequest, user: dict = Depends(get_current_user)):
     try:
-        session, player = store.join_session(body.code, body.player_name, body.password)
+        session, player = store.join_session(body.code, body.player_name, body.password, user["id"])
         return {"success": True, "session": session, "player": player}
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/sessions/start", tags=["Sessions"])
-def start_session(body: StartSessionRequest):
+def start_session(body: StartSessionRequest, user: dict = Depends(get_current_user)):
     try:
         session = store.start_session(body.code, body.host_name)
         return {"success": True, "session": session}
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/sessions/answer", tags=["Sessions"])
-def submit_answer(body: SubmitAnswerRequest):
+def submit_answer(body: SubmitAnswerRequest, user: dict = Depends(get_current_user)):
     try:
         session = store.submit_answer(
             body.code, body.player_name, body.q_index,
@@ -205,8 +284,9 @@ def submit_answer(body: SubmitAnswerRequest):
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+
 @app.post("/sessions/finish", tags=["Sessions"])
-def finish_player(body: FinishRequest):
+def finish_player(body: FinishRequest, user: dict = Depends(get_current_user)):
     try:
         session = store.finish_player(body.code, body.player_name)
         return {"success": True, "session": session}
@@ -214,7 +294,19 @@ def finish_player(body: FinishRequest):
         raise HTTPException(400, str(e))
 
 
-# ── AI Explanation ────────────────────────────────────────────────────────────
+# ── User Dashboard ─────────────────────────────────────────────────────────────
+
+@app.get("/me/history", tags=["User"])
+def my_history(user: dict = Depends(get_current_user)):
+    """
+    Returns all sessions the authenticated user has participated in,
+    with their personal score and answers.
+    """
+    return {"history": store.get_user_session_history(user["id"])}
+
+
+# ── AI Explanation ─────────────────────────────────────────────────────────────
+
 class ExplainRequest(BaseModel):
     question: str
     correct_answer: str
@@ -223,8 +315,9 @@ class ExplainRequest(BaseModel):
     provider: str = "NVIDIA"
     model: str = "meta/llama-3.1-8b-instruct"
 
+
 @app.post("/explain", tags=["AI"])
-def explain(body: ExplainRequest):
+def explain(body: ExplainRequest, user: dict = Depends(get_current_user)):
     try:
         text = explain_wrong_answer(
             body.question, body.correct_answer,
@@ -237,18 +330,16 @@ def explain(body: ExplainRequest):
         traceback.print_exc()
         raise HTTPException(500, str(e))
 
+
 class EvaluateRequest(BaseModel):
     question: str
     correct_answer: str
     student_answer: str
     q_type: str = "mcq"
 
+
 @app.post("/evaluate", tags=["AI"])
-def evaluate_answer(body: EvaluateRequest):
-    """
-    Use NVIDIA LLM to judge whether student_answer is correct for the question.
-    Returns: { correct: bool, confidence: float (0.0–1.0), reasoning: str }
-    """
+def evaluate_answer(body: EvaluateRequest, user: dict = Depends(get_current_user)):
     try:
         from openai import OpenAI
         import json, re
@@ -266,7 +357,7 @@ Student answer: {body.student_answer}
 Question type: {body.q_type}
 
 Decide if the student's answer is correct or meaningfully equivalent to the correct answer.
-For MCQ/truefalse: mark correct if the student's choice clearly refers to the same option, even if the wording differs slightly.
+For MCQ/truefalse: mark correct if the student's choice clearly refers to the same option.
 For short answer: allow paraphrasing and give partial credit.
 
 Respond with ONLY valid JSON, no explanation outside it:

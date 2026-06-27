@@ -9,10 +9,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from utils.helpers import (page_config, sidebar_identity, init_state,
                             api_post, api_get, PROVIDER_MODELS, get_user_id)
+from components.auth import require_auth
 
 page_config("Generate Questions")
 init_state()
 sidebar_identity()
+
+user = require_auth()
 
 st.title("🤖 Generate Questions with AI")
 st.markdown("Configure exactly how you want your questions — type, difficulty, tone — and write custom prompts for precise control.")
@@ -21,34 +24,48 @@ st.divider()
 
 # ── Source material ────────────────────────────────────────────────────────────
 st.markdown("### 1️⃣ Choose Study Material")
-source_tab1, source_tab2 = st.tabs(["📂 From saved materials", "✏️ Paste custom text"])
+source_tab1, source_tab2 = st.tabs(["📂 From your materials", "✏️ Paste custom text"])
 
 material_text = ""
+
+# Check if coming from Upload page or Dashboard with a prefill
+prefill_text  = st.session_state.pop("prefill_material", None)
+prefill_title = st.session_state.pop("prefill_title", None)
 
 with source_tab1:
     data = api_get("/materials")
     materials = data.get("materials", []) if data else []
     if materials:
-        options = {f"{m['title']} (by {m.get('uploader', 'unknown')})": m for m in materials}
-        selected_label = st.selectbox("Select material", ["— choose —"] + list(options.keys()))
+        options = {f"{m['title']} ({len(m['text'].split())} words)": m for m in materials}
+        default_idx = 0
+        if prefill_title:
+            keys = list(options.keys())
+            for i, k in enumerate(keys):
+                if prefill_title in k:
+                    default_idx = i
+                    break
+        selected_label = st.selectbox("Select material", ["— choose —"] + list(options.keys()),
+                                       index=default_idx + 1 if prefill_title else 0)
         if selected_label != "— choose —":
             mat = options[selected_label]
             material_text = mat["text"]
-            st.success(f"✅ Loaded: **{mat['title']}** — {len(material_text.split())} words")
+            st.success(f"✅ Loaded: {mat['title']} — {len(material_text.split())} words")
             with st.expander("Preview material"):
                 st.write(material_text[:600] + "…")
     else:
         st.warning("No saved materials. Upload some first or use the paste tab.")
 
 with source_tab2:
+    default_paste = prefill_text or ""
     custom_text = st.text_area("Paste any content here", height=200,
-                                placeholder="Paste notes, paragraphs, definitions...")
+                               value=default_paste,
+                               placeholder="Paste notes, paragraphs, definitions…")
     if custom_text.strip():
         material_text = custom_text.strip()
 
 st.divider()
 
-# ── AI Configuration ───────────────────────────────────────────────────────────
+# ── AI Configuration ────────────────────────────────────────────────────────────
 st.markdown("### 2️⃣ Configure AI Generation")
 
 col1, col2 = st.columns(2)
@@ -58,43 +75,40 @@ with col1:
     q_type = st.radio("Question type", [
         "mcq", "truefalse", "short", "mixed"
     ], format_func=lambda x: {
-        "mcq": "🔤 Multiple Choice (4 options)",
+        "mcq":       "🔤 Multiple Choice (4 options)",
         "truefalse": "✅ True / False",
-        "short": "✏️ Short Answer",
-        "mixed": "🎲 Mixed (all types)",
+        "short":     "✏️ Short Answer",
+        "mixed":     "🎲 Mixed (all types)",
     }[x], horizontal=False)
 
-    difficulty = st.select_slider("Difficulty", ["easy", "medium", "hard"],
-                                   value="medium",
-                                   format_func=lambda x: x.capitalize())
+    difficulty    = st.select_slider("Difficulty", ["easy", "medium", "hard"], value="medium",
+                                     format_func=lambda x: x.capitalize())
     num_questions = st.slider("Number of questions", 3, 20, 5, 1)
-    time_limit = st.slider("Time limit per question (seconds)", 5, 60, 15, 5,
-                            help="How long each player has to answer")
+    time_limit    = st.slider("Time limit per question (seconds)", 5, 60, 15, 5,
+                               help="How long each player has to answer")
 
 with col2:
     st.markdown("#### Style & Focus")
     tone = st.selectbox("Question tone / style", [
         "academic", "casual", "challenging"
     ], format_func=lambda x: {
-        "academic": "🎓 Academic (formal textbook style)",
-        "casual": "💬 Casual (friendly, conversational)",
+        "academic":    "🎓 Academic (formal textbook style)",
+        "casual":      "💬 Casual (friendly, conversational)",
         "challenging": "🔥 Challenging (tricky distractors, edge cases)",
     }[x])
 
-    focus_area = st.text_input("Focus area (optional)",
-                                placeholder="e.g. Only questions about mitosis, not meiosis")
+    focus_area  = st.text_input("Focus area (optional)",
+                                 placeholder="e.g. Only questions about mitosis, not meiosis")
     temperature = st.slider("AI creativity", 0.0, 1.0, 0.4, 0.05,
-                             help="Lower = more precise/predictable, Higher = more creative/varied")
+                             help="Lower = more precise, Higher = more creative")
     provider = "NVIDIA"
-    model = "meta/llama-3.1-8b-instruct"
-    st.info(f"Using: **{provider}** / `{model}`")
+    model    = "meta/llama-3.1-8b-instruct"
+    st.info(f"Using: {provider} / {model}")
 
 st.divider()
 
-# ── Custom Prompt Engineering ──────────────────────────────────────────────────
+# ── Custom Prompt ──────────────────────────────────────────────────────────────
 st.markdown("### 3️⃣ Custom Prompt (Prompt Engineering)")
-st.markdown("Write any extra instructions to guide the AI.")
-
 custom_prompt = st.text_area(
     "Your custom instructions", height=120,
     placeholder='e.g. "Focus on definitions only" | "Make distractors plausible"'
@@ -110,16 +124,14 @@ with st.expander("💡 Prompt engineering tips"):
 
 st.divider()
 
-# ── Generate ───────────────────────────────────────────────────────────────────
+# ── Generate ────────────────────────────────────────────────────────────────────
 st.markdown("### 4️⃣ Generate!")
-
-uploader_name = st.session_state.get("player_name", "")
 
 generate_clicked = st.button(
     "✨ Generate Questions with AI",
     type="primary",
     use_container_width=True,
-    disabled=not material_text
+    disabled=not material_text,
 )
 
 if not material_text:
@@ -128,25 +140,24 @@ if not material_text:
 if generate_clicked and material_text:
     with st.spinner(f"🤖 {provider} is generating {num_questions} {q_type} questions…"):
         result = api_post("/generate", {
-            "material": material_text,
+            "material":      material_text,
             "num_questions": num_questions,
             "question_type": q_type,
-            "difficulty": difficulty,
-            "time_limit": time_limit,
-            "focus_area": focus_area,
-            "tone": tone,
+            "difficulty":    difficulty,
+            "time_limit":    time_limit,
+            "focus_area":    focus_area,
+            "tone":          tone,
             "custom_prompt": custom_prompt,
-            "provider": provider,
-            "model": model,
-            "temperature": temperature,
-            "save": True,
-            "uploader": uploader_name,
+            "provider":      provider,
+            "model":         model,
+            "temperature":   temperature,
+            "save":          True,
         })
 
     if result and result.get("success"):
         qs = result["question_set"]
-        st.session_state["last_generated_qs"] = qs
-        st.session_state["active_question_set_id"] = qs["id"]
+        st.session_state["last_generated_qs"]       = qs
+        st.session_state["active_question_set_id"]  = qs["id"]
 
 # ── Show last generated ────────────────────────────────────────────────────────
 qs = st.session_state.get("last_generated_qs")
@@ -163,34 +174,34 @@ if qs:
             st.switch_page("pages/3_Host_Session.py")
 
     with col2:
+        player_name = st.session_state.get("player_name", "").strip()
         if st.button("🏃 Solo Test", use_container_width=True):
-            player_name = st.session_state.get("player_name", "").strip()
             if not player_name:
                 st.error("Enter your name in the sidebar before starting a solo test.")
             else:
                 with st.spinner("Starting solo session…"):
                     create_result = api_post("/sessions", {
-                        "host_name": player_name,
+                        "host_name":       player_name,
                         "question_set_id": qs["id"],
-                        "password": "",
+                        "password":        "",
                     })
                     if create_result and create_result.get("success"):
                         sess = create_result["session"]
                         start_result = api_post("/sessions/start", {
-                            "code": sess["code"],
+                            "code":      sess["code"],
                             "host_name": player_name,
                         })
                         if start_result and start_result.get("success"):
                             started_sess = start_result["session"]
                             started_sess["questions"] = qs.get("questions", [])
-                            st.session_state["session_code"] = started_sess["code"]
-                            st.session_state["session_data"] = started_sess
-                            st.session_state["is_host"] = True
-                            st.session_state["quiz_active"] = True
-                            st.session_state["q_index"] = 0
-                            st.session_state["answers"] = []
-                            st.session_state["score"] = 0
-                            st.session_state["q_start_time"] = None
+                            st.session_state["session_code"]  = started_sess["code"]
+                            st.session_state["session_data"]  = started_sess
+                            st.session_state["is_host"]       = True
+                            st.session_state["quiz_active"]   = True
+                            st.session_state["q_index"]       = 0
+                            st.session_state["answers"]       = []
+                            st.session_state["score"]         = 0
+                            st.session_state["q_start_time"]  = None
                             st.switch_page("pages/4_Join_Session.py")
 
     with col3:
@@ -199,13 +210,17 @@ if qs:
             st.rerun()
 
 # ── Saved question sets ────────────────────────────────────────────────────────
-st.markdown("### 📚 All Saved Question Sets")
+st.markdown("### 📚 Your Saved Question Sets")
 data = api_get("/question_sets")
 if data and data.get("question_sets"):
     for qs_item in sorted(data["question_sets"], key=lambda x: x.get("created_at", ""), reverse=True):
-        label = f"**{qs_item['title']}** — {len(qs_item.get('questions', []))} questions | {qs_item.get('time_limit', 15)}s/q"
+        label = f"{qs_item['title']} — {len(qs_item.get('questions', []))} questions | {qs_item.get('time_limit', 15)}s/q"
         with st.expander(label):
             st.caption(f"Subject: {qs_item.get('subject', '')} | ID: {qs_item.get('id', '')}")
-            st.caption(f"{len(qs_item.get('questions', []))} questions hidden until the quiz is completed.")
+            pub = "🌐 Public" if qs_item.get("is_public") else "🔒 Private"
+            st.caption(pub)
+            if st.button("🏃 Solo test", key=f"solo_{qs_item['id']}"):
+                st.session_state["last_generated_qs"] = qs_item
+                st.rerun()
 else:
     st.info("No question sets saved yet.")
