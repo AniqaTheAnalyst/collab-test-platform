@@ -435,14 +435,10 @@ def finish_player(code: str, player_name: str) -> dict:
 # ── User history ───────────────────────────────────────────────────────────────
 
 def get_user_session_history(user_id: str) -> list:
-    """
-    Return all sessions where the user participated as a player,
-    with their personal score and answers for each.
-    """
-    # Find all player rows for this user
+    # Step 1: get all player rows for this user
     players_resp = (
         _client.table("session_players")
-        .select("*, sessions(*)")
+        .select("*")
         .eq("user_id", user_id)
         .order("joined_at", desc=True)
         .execute()
@@ -450,10 +446,18 @@ def get_user_session_history(user_id: str) -> list:
 
     history = []
     for p in (players_resp.data or []):
-        session_row = p.get("sessions", {})
-        if not session_row:
+        # Step 2: fetch the session separately
+        s_resp = (
+            _client.table("sessions")
+            .select("*")
+            .eq("id", p["session_id"])
+            .execute()
+        )
+        if not s_resp.data:
             continue
+        session_row = s_resp.data[0]
 
+        # Step 3: fetch answers for this player
         answers_resp = (
             _client.table("answers")
             .select("*")
