@@ -123,9 +123,12 @@ def create_material(body: MaterialCreate, user: dict = Depends(get_current_user)
 
 @app.get("/materials", tags=["Materials"])
 def list_materials(user: dict = Depends(get_current_user)):
-    """Returns only materials uploaded by the authenticated user."""
-    return {"materials": store.get_user_materials(user["id"])}
-
+    try:
+        return {"materials": store.get_user_materials(user["id"])}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Materials error: {type(e).__name__}: {str(e)}")
 
 @app.get("/materials/{mid}", tags=["Materials"])
 def get_material(mid: str, user: dict = Depends(get_current_user)):
@@ -308,6 +311,10 @@ def my_history(user: dict = Depends(get_current_user)):
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"History error: {type(e).__name__}: {str(e)}")
+
+
+
+
 
 # ── AI Explanation ─────────────────────────────────────────────────────────────
 
