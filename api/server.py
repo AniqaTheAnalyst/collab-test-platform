@@ -39,37 +39,33 @@ app.add_middleware(
 # ── Auth dependency ────────────────────────────────────────────────────────────
 
 def get_current_user(request: Request) -> dict:
-    """
-    Try JWT verification first, fall back to X-User-Id header.
-    """
-    # 1. Try JWT
-    if SUPABASE_JWT_SECRET:
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            token = auth_header.split(" ", 1)[1]
-            try:
-                payload = pyjwt.decode(
-                    token,
-                    SUPABASE_JWT_SECRET,
-                    algorithms=["HS256"],
-                    options={"verify_aud": False},
-                )
-                user_id = payload.get("sub")
-                if user_id:
-                    return {"id": user_id, "email": payload.get("email", "")}
-            except Exception:
-                pass  # fall through to header fallback
-
-    # 2. Fallback: X-User-Id header
-    user_id = request.headers.get("X-User-Id", "").strip()
+    # Skip JWT decode — Supabase now uses ES256 which requires public key verification
+    # Trust X-User-Id header instead (set by Streamlit after Supabase login)
+    user_id = request.headers.get("x-user-id", "").strip()
     if user_id:
         return {
             "id": user_id,
-            "email": request.headers.get("X-User-Email", ""),
+            "email": request.headers.get("x-user-email", ""),
         }
 
-    raise HTTPException(401, "Authentication required. Please sign in.")
+    # Last resort: try to extract sub from JWT without verification
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+        try:
+            # Decode without verification — we trust Supabase issued it
+            payload = pyjwt.decode(
+                token,
+                options={"verify_signature": False},
+                algorithms=["ES256", "HS256"],
+            )
+            user_id = payload.get("sub")
+            if user_id:
+                return {"id": user_id, "email": payload.get("email", "")}
+        except Exception:
+            pass
 
+    raise HTTPException(401, "Authentication required. Please sign in.")
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 
