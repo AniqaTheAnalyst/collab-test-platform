@@ -44,14 +44,25 @@ def get_user_id(name: str = "") -> str:
 
 def _auth_headers() -> dict:
     """Send JWT token + user ID header as fallback."""
+
     headers = {}
+
     token = get_access_token()
+    user = get_current_user()
+
+    st.write("===== AUTH DEBUG =====")
+    st.write("Token exists:", bool(token))
+    st.write("User:", user)
+
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    user = get_current_user()
+
     if user:
-        headers["X-User-Id"]    = user["id"]
+        headers["X-User-Id"] = user["id"]
         headers["X-User-Email"] = user.get("email", "")
+
+    st.write("Headers being sent:", headers)
+
     return headers
 
 # ── API wrappers ───────────────────────────────────────────────────────────────
