@@ -6,6 +6,8 @@ Supports plain text paste, PDF upload, and image upload (OCR).
 import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import cv2
+import numpy as np
 
 from utils.helpers import page_config, sidebar_identity, init_state, api_post, api_get
 from components.auth import require_auth
@@ -43,6 +45,47 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         return ""
 
 
+def preprocess_image(file_bytes: bytes) -> bytes:
+    nparr = np.frombuffer(file_bytes, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if img is None:
+        return file_bytes
+
+    # Resize to improve readability
+    img = cv2.resize(
+        img,
+        None,
+        fx=2,
+        fy=2,
+        interpolation=cv2.INTER_CUBIC,
+    )
+
+    # Convert to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Remove noise
+    gray = cv2.fastNlMeansDenoising(gray)
+
+    # Improve contrast
+    gray = cv2.equalizeHist(gray)
+
+    # Sharpen
+    kernel = np.array([
+        [0, -1, 0],
+        [-1, 5, -1],
+        [0, -1, 0]
+    ])
+    gray = cv2.filter2D(gray, -1, kernel)
+
+    success, buffer = cv2.imencode(".png", gray)
+
+    if not success:
+        return file_bytes
+
+    return buffer.tobytes()
+
+
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
     """Extract text from an image using NVIDIA API (free tier)."""
     try:
@@ -56,7 +99,9 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
         }
         media_type = media_type_map.get(ext, "image/jpeg")
 
-        b64_image = base64.standard_b64encode(file_bytes).decode("utf-8")
+        processed = preprocess_image(file_bytes)
+
+        b64_image = base64.standard_b64encode(processed).decode("utf-8")
         image_url = f"data:{media_type};base64,{b64_image}"
 
         client = OpenAI(
@@ -76,11 +121,22 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
                         },
                         {
                             "type": "text",
-                            "text": (
-                                "Extract ALL text from this image exactly as written. "
-                                "Preserve headings, bullet points, numbered lists, and structure. "
-                                "If this is a diagram or chart, describe it clearly in text. "
-                                "Output only the extracted content, no commentary."
+                            "text": ( """
+                                        You are an OCR engine.
+
+                                        Rules:
+                                        1. Copy ONLY the text that is actually visible.
+                                        2. Do NOT guess missing or blurry words.
+                                        3. If a word cannot be read, write [UNCLEAR].
+                                        4. Preserve the original language exactly (Bangla or English).
+                                        5. Preserve line breaks and numbering.
+                                        6. Do NOT translate.
+                                        7. Do NOT summarize.
+                                        8. Do NOT explain.
+                                        9. Never invent text.
+
+                                        Return only the transcription.
+                                        """
                             ),
                         },
                     ],

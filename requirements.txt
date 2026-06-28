@@ -20,3 +20,10 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 
 PyMuPDF
+
+pytesseract
+pillow
+opencv-python-headless
+numpy
+pillow
+
