@@ -34,20 +34,8 @@ tab_history, tab_materials, tab_qsets = st.tabs([
 # ── Quiz History ───────────────────────────────────────────────────────────────
 
 
-debug = api_get("/debug/headers")
-st.write("DEBUG BACKEND SEES:", debug)
-
 
 with tab_history:
-    st.markdown("### Sessions you've played")
-
-    st.write("===== DEBUG =====")
-    st.write("User ID:", st.session_state.get("sb_user_id"))
-    st.write("Email:", st.session_state.get("sb_user_email"))
-    st.write("Access Token Exists:", bool(st.session_state.get("sb_access_token")))
-    st.write("Refresh Token Exists:", bool(st.session_state.get("sb_refresh_token")))
-    st.write("Session State Keys:", list(st.session_state.keys()))
-
     data = api_get("/me/history")
     history = data.get("history", []) if data else []
 
