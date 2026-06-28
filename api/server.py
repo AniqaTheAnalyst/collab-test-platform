@@ -73,6 +73,15 @@ def get_current_user(request: Request) -> dict:
 
 # ── Health ─────────────────────────────────────────────────────────────────────
 
+@app.get("/debug/headers", tags=["Health"])
+def debug_headers(request: Request):
+    return {
+        "headers": dict(request.headers),
+        "has_auth": "authorization" in request.headers,
+        "has_user_id": "x-user-id" in request.headers,
+        "jwt_secret_set": bool(SUPABASE_JWT_SECRET),
+    }
+
 @app.get("/", tags=["Health"])
 def root():
     return {"status": "ok", "service": "StudySquad API v1.0"}

@@ -32,6 +32,12 @@ tab_history, tab_materials, tab_qsets = st.tabs([
 ])
 
 # ── Quiz History ───────────────────────────────────────────────────────────────
+
+
+debug = api_get("/debug/headers")
+st.write("DEBUG BACKEND SEES:", debug)
+
+
 with tab_history:
     st.markdown("### Sessions you've played")
 

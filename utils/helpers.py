@@ -53,6 +53,7 @@ def _auth_headers() -> dict:
     st.write("===== AUTH DEBUG =====")
     st.write("Token exists:", bool(token))
     st.write("User:", user)
+    st.write("Headers being sent:", headers)
 
     if token:
         headers["Authorization"] = f"Bearer {token}"
