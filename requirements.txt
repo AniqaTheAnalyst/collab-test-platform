@@ -21,11 +21,7 @@ requests>=2.31.0
 
 PyMuPDF
 
-pytesseract
 pillow
 opencv-python-headless
 numpy
-pillow
-
-google-generativeai
-google-genai
+mistralai

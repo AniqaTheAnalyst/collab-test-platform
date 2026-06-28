@@ -43,43 +43,55 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         return ""
 
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
-    """Extract text using Gemini — free, fast, accurate Bangla OCR."""
+    """Extract text using NVIDIA API."""
     try:
-        from google import genai
-        from google.genai import types
+        from openai import OpenAI
         from PIL import Image
-        import io, time
+        import io, base64
 
-        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-        image = Image.open(io.BytesIO(file_bytes))
+        # Resize to max 1000px
+        img = Image.open(io.BytesIO(file_bytes))
+        img.thumbnail((1000, 1000))
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        b64_image = base64.standard_b64encode(buf.getvalue()).decode("utf-8")
+        image_url = f"data:image/jpeg;base64,{b64_image}"
 
-        prompt = (
-            "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
-            "Rules:\n"
-            "- Copy text exactly as written (Bangla or English).\n"
-            "- Preserve line breaks and numbering.\n"
-            "- Write [UNCLEAR] for unreadable words.\n"
-            "- Do NOT translate, summarize, explain, or add anything.\n"
-            "- Do NOT invent or add lines not visible in the image.\n"
-            "- Do NOT repeat lines.\n"
-            "- Stop after the last visible line.\n"
-            "Output the transcription only."
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=os.getenv("NVIDIA_API_KEY"),
         )
 
-        for attempt in range(3):
-            try:
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash-lite",
-                    contents=[image, prompt],
-                )
-                return response.text.strip()
-            except Exception as e:
-                if "429" in str(e) and attempt < 2:
-                    wait = (attempt + 1) * 15
-                    st.info(f"⏳ Rate limited, retrying in {wait} seconds…")
-                    time.sleep(wait)
-                else:
-                    raise e
+        response = client.chat.completions.create(
+            model="google/gemma-3-27b-it",  # better than llama for Bangla
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                        {
+                            "type": "text",
+                            "text": (
+                                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
+                                "Rules:\n"
+                                "- Copy text exactly as written (Bangla or English).\n"
+                                "- Preserve line breaks and numbering.\n"
+                                "- Write [UNCLEAR] for unreadable words.\n"
+                                "- Do NOT translate, summarize, explain, or add anything.\n"
+                                "- Do NOT invent or add lines not visible in the image.\n"
+                                "- Do NOT repeat lines.\n"
+                                "- Stop after the last visible line.\n"
+                                "Output the transcription only."
+                            ),
+                        },
+                    ],
+                }
+            ],
+            max_tokens=2048,
+            temperature=0.0,
+        )
+
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
         st.error(f"Image extraction error: {e}")
