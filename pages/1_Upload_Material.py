@@ -44,40 +44,45 @@ def extract_from_pdf(file_bytes: bytes) -> str:
 
 
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
-    """Extract text using Gemini 1.5 Flash — free, fast, accurate Bangla OCR."""
     try:
         import google.generativeai as genai
         from PIL import Image
         import io
+        import time
 
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel("gemini-2.0-flash")
-
+        model = genai.GenerativeModel("gemini-1.5-flash-8b")
         image = Image.open(io.BytesIO(file_bytes))
 
-        response = model.generate_content([
-            image,
-            (
-                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
-                "Rules:\n"
-                "- Copy text exactly as written (Bangla or English).\n"
-                "- Preserve line breaks and numbering.\n"
-                "- Write [UNCLEAR] for unreadable words.\n"
-                "- Do NOT translate, summarize, explain, or add anything.\n"
-                "- Do NOT invent or add lines not visible in the image.\n"
-                "- Do NOT repeat lines.\n"
-                "- Stop after the last visible line.\n"
-                "Output the transcription only."
-            ),
-        ])
+        prompt = (
+            "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
+            "Rules:\n"
+            "- Copy text exactly as written (Bangla or English).\n"
+            "- Preserve line breaks and numbering.\n"
+            "- Write [UNCLEAR] for unreadable words.\n"
+            "- Do NOT translate, summarize, explain, or add anything.\n"
+            "- Do NOT invent or add lines not visible in the image.\n"
+            "- Do NOT repeat lines.\n"
+            "- Stop after the last visible line.\n"
+            "Output the transcription only."
+        )
 
-        return response.text.strip()
+        # Retry up to 3 times on rate limit
+        for attempt in range(3):
+            try:
+                response = model.generate_content([image, prompt])
+                return response.text.strip()
+            except Exception as e:
+                if "429" in str(e) and attempt < 2:
+                    wait = (attempt + 1) * 10  # 10s, 20s
+                    st.info(f"⏳ Rate limited, retrying in {wait} seconds…")
+                    time.sleep(wait)
+                else:
+                    raise e
 
     except Exception as e:
         st.error(f"Image extraction error: {e}")
         return ""
-
-
 # ── Layout ─────────────────────────────────────────────────────────────────────
 
 col1, col2 = st.columns([2, 1])
