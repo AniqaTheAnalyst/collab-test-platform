@@ -44,10 +44,10 @@ def extract_from_pdf(file_bytes: bytes) -> str:
 
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
     try:
+        from openai import OpenAI
         from PIL import Image
-        import io, base64, requests
+        import io, base64
 
-        # Resize to max 1000px
         img = Image.open(io.BytesIO(file_bytes))
         img.thumbnail((1000, 1000))
         buf = io.BytesIO()
@@ -55,31 +55,42 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
         b64_image = base64.standard_b64encode(buf.getvalue()).decode("utf-8")
         image_url = f"data:image/jpeg;base64,{b64_image}"
 
-        response = requests.post(
-            "https://integrate.api.nvidia.com/v1/infer",
-            headers={
-                "Authorization": f"Bearer {os.getenv('NVIDIA_API_KEY')}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-            json={
-                "input": [{"type": "image_url", "url": image_url}],
-                "merge_levels": ["paragraph"],
-            },
-            timeout=30,
+        client = OpenAI(
+            base_url="https://integrate.api.nvidia.com/v1",
+            api_key=os.getenv("NVIDIA_API_KEY"),
         )
-        response.raise_for_status()
-        data = response.json()
 
-        # Extract all detected text
-        lines = []
-        for item in data.get("data", []):
-            for detection in item.get("text_detections", []):
-                text = detection.get("text_prediction", {}).get("text", "")
-                if text.strip():
-                    lines.append(text.strip())
+        response = client.chat.completions.create(
+            model="meta/llama-3.2-11b-vision-instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                        {
+                            "type": "text",
+                            "text": (
+                                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
+                                "Rules:\n"
+                                "- Copy text exactly as written (Bangla or English).\n"
+                                "- Preserve line breaks and numbering.\n"
+                                "- Write [UNCLEAR] for unreadable words.\n"
+                                "- Do NOT translate, summarize, explain, or add anything.\n"
+                                "- Do NOT invent or add lines not visible in the image.\n"
+                                "- Do NOT repeat lines.\n"
+                                "- Stop after the last visible line.\n"
+                                "Output the transcription only."
+                            ),
+                        },
+                    ],
+                }
+            ],
+            max_tokens=2048,
+            temperature=0.0,
+            stop=["[END]", "---"],
+        )
 
-        return "\n".join(lines)
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
         st.error(f"Image extraction error: {e}")
