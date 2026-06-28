@@ -51,7 +51,7 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
         import io
 
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
         image = Image.open(io.BytesIO(file_bytes))
 
