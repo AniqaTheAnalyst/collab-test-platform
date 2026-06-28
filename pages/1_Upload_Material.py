@@ -44,7 +44,6 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         st.error(f"PDF extraction error: {e}")
         return ""
 
-
 def preprocess_image(file_bytes: bytes) -> bytes:
     nparr = np.frombuffer(file_bytes, np.uint8)
     img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -52,34 +51,20 @@ def preprocess_image(file_bytes: bytes) -> bytes:
     if img is None:
         return file_bytes
 
-    # Resize to improve readability
-    img = cv2.resize(
-        img,
-        None,
-        fx=2,
-        fy=2,
-        interpolation=cv2.INTER_CUBIC,
-    )
-
     # Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Remove noise
-    gray = cv2.fastNlMeansDenoising(gray)
+    # Resize DOWN if image is very large (vision models don't need >1600px wide)
+    h, w = gray.shape
+    max_dim = 1600
+    if max(h, w) > max_dim:
+        scale = max_dim / max(h, w)
+        gray = cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-    # Improve contrast
-    gray = cv2.equalizeHist(gray)
+    # Light threshold instead of equalizeHist — faster and cleaner for text
+    _, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-    # Sharpen
-    kernel = np.array([
-        [0, -1, 0],
-        [-1, 5, -1],
-        [0, -1, 0]
-    ])
-    gray = cv2.filter2D(gray, -1, kernel)
-
-    success, buffer = cv2.imencode(".png", gray)
-
+    success, buffer = cv2.imencode(".png", gray, [cv2.IMWRITE_PNG_COMPRESSION, 3])
     if not success:
         return file_bytes
 
