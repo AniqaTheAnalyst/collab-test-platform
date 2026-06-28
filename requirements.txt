@@ -28,3 +28,4 @@ numpy
 pillow
 
 google-generativeai
+google-genai

@@ -42,16 +42,15 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         st.error(f"PDF extraction error: {e}")
         return ""
 
-
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
+    """Extract text using Gemini — free, fast, accurate Bangla OCR."""
     try:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
         from PIL import Image
-        import io
-        import time
+        import io, time
 
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        model = genai.GenerativeModel("gemini-1.5-flash-8b")
+        client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         image = Image.open(io.BytesIO(file_bytes))
 
         prompt = (
@@ -67,14 +66,16 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
             "Output the transcription only."
         )
 
-        # Retry up to 3 times on rate limit
         for attempt in range(3):
             try:
-                response = model.generate_content([image, prompt])
+                response = client.models.generate_content(
+                    model="gemini-2.0-flash-lite",
+                    contents=[image, prompt],
+                )
                 return response.text.strip()
             except Exception as e:
                 if "429" in str(e) and attempt < 2:
-                    wait = (attempt + 1) * 10  # 10s, 20s
+                    wait = (attempt + 1) * 15
                     st.info(f"⏳ Rate limited, retrying in {wait} seconds…")
                     time.sleep(wait)
                 else:
