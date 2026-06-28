@@ -6,8 +6,6 @@ Supports plain text paste, PDF upload, and image upload (OCR).
 import streamlit as st
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-import cv2
-import numpy as np
 
 from utils.helpers import page_config, sidebar_identity, init_state, api_post, api_get
 from components.auth import require_auth
@@ -44,100 +42,36 @@ def extract_from_pdf(file_bytes: bytes) -> str:
         st.error(f"PDF extraction error: {e}")
         return ""
 
-def preprocess_image(file_bytes: bytes) -> bytes:
-    nparr = np.frombuffer(file_bytes, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-    if img is None:
-        return file_bytes
-
-    # Convert to grayscale
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Resize DOWN if image is very large (vision models don't need >1600px wide)
-    h, w = gray.shape
-    max_dim = 1600
-    if max(h, w) > max_dim:
-        scale = max_dim / max(h, w)
-        gray = cv2.resize(gray, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
-
-    # Light threshold instead of equalizeHist — faster and cleaner for text
-    _, gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    success, buffer = cv2.imencode(".png", gray, [cv2.IMWRITE_PNG_COMPRESSION, 3])
-    if not success:
-        return file_bytes
-
-    return buffer.tobytes()
-
-
-def _is_repetitive(text: str, threshold: float = 0.4) -> bool:
-    """Return True if the text seems to be a hallucination loop."""
-    if not text or len(text) < 100:
-        return False
-    chunks = [text[i:i+80] for i in range(0, len(text), 80)]
-    unique_ratio = len(set(chunks)) / len(chunks)
-    return unique_ratio < threshold
-
 
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
-    """Extract text from an image using NVIDIA API (free tier)."""
+    """Extract text using Gemini 1.5 Flash — free, fast, accurate Bangla OCR."""
     try:
-        import base64
-        from openai import OpenAI
+        import google.generativeai as genai
+        from PIL import Image
+        import io
 
-        ext = filename.lower().split(".")[-1]
-        media_type_map = {
-            "jpg": "image/jpeg", "jpeg": "image/jpeg",
-            "png": "image/png", "gif": "image/gif", "webp": "image/webp",
-        }
-        media_type = media_type_map.get(ext, "image/jpeg")
+        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-        processed = preprocess_image(file_bytes)
-        b64_image = base64.standard_b64encode(processed).decode("utf-8")
-        image_url = f"data:{media_type};base64,{b64_image}"
+        image = Image.open(io.BytesIO(file_bytes))
 
-        client = OpenAI(
-            base_url="https://integrate.api.nvidia.com/v1",
-            api_key=os.getenv("NVIDIA_API_KEY"),
-        )
+        response = model.generate_content([
+            image,
+            (
+                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
+                "Rules:\n"
+                "- Copy text exactly as written (Bangla or English).\n"
+                "- Preserve line breaks and numbering.\n"
+                "- Write [UNCLEAR] for unreadable words.\n"
+                "- Do NOT translate, summarize, explain, or add anything.\n"
+                "- Do NOT invent or add lines not visible in the image.\n"
+                "- Do NOT repeat lines.\n"
+                "- Stop after the last visible line.\n"
+                "Output the transcription only."
+            ),
+        ])
 
-        response = client.chat.completions.create(
-            model="meta/llama-3.2-11b-vision-instruct",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                        {
-                            "type": "text",
-                            "text": (
-                                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
-                                "Rules:\n"
-                                "- Copy text exactly as written (Bangla or English).\n"
-                                "- Preserve line breaks and numbering.\n"
-                                "- Write [UNCLEAR] for unreadable words.\n"
-                                "- Do NOT translate, summarize, explain, or add anything.\n"
-                                "- Do NOT repeat lines.\n"
-                                "- Stop after the last visible line.\n"
-                                "Output the transcription only."
-                            ),
-                        },
-                    ],
-                }
-            ],
-            max_tokens=2048,
-            temperature=0.0,
-            stop=["[END]", "---"],
-        )
-
-        result = response.choices[0].message.content.strip()
-
-        if _is_repetitive(result):
-            st.warning("⚠️ The model produced repetitive output. The image may be too complex or low-contrast. Try cropping it into smaller sections.")
-            return ""
-
-        return result
+        return response.text.strip()
 
     except Exception as e:
         st.error(f"Image extraction error: {e}")
