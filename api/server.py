@@ -1,22 +1,18 @@
 """
 api/server.py
 FastAPI REST backend for StudySquad.
-All protected endpoints require a valid Supabase JWT in the Authorization header.
 Run with: uvicorn api.server:app --reload --port 8000
 """
 
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from fastapi import FastAPI, HTTPException, Query, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
 import time
-import os
-import jwt as pyjwt          # pip install PyJWT
-import requests as _requests
+import jwt as pyjwt
 
 from components import supabase_store as store
 from components.llm_chain import generate_questions, explain_wrong_answer
@@ -24,8 +20,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-SUPABASE_URL     = os.getenv("SUPABASE_URL", "")
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")  # Settings → API → JWT Secret
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 
 app = FastAPI(
     title="StudySquad API",
@@ -37,62 +32,43 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "Authorization", "X-User-Id", "X-User-Email"],
 )
-
-_bearer = HTTPBearer(auto_error=False)
 
 
 # ── Auth dependency ────────────────────────────────────────────────────────────
 
-def _decode_token(token: str) -> dict:
+def get_current_user(request: Request) -> dict:
     """
-    Decode and verify a Supabase JWT.
-    Returns the payload dict (which contains 'sub' = user UUID).
-    Raises HTTPException(401) on failure.
+    Try JWT verification first, fall back to X-User-Id header.
     """
-    if not SUPABASE_JWT_SECRET:
-        raise HTTPException(500, "SUPABASE_JWT_SECRET not configured on server.")
-    try:
-        payload = pyjwt.decode(
-            token,
-            SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated",
-        )
-        return payload
-    except pyjwt.ExpiredSignatureError:
-        raise HTTPException(401, "Token expired. Please sign in again.")
-    except pyjwt.InvalidTokenError as e:
-        raise HTTPException(401, f"Invalid token: {e}")
+    # 1. Try JWT
+    if SUPABASE_JWT_SECRET:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+            try:
+                payload = pyjwt.decode(
+                    token,
+                    SUPABASE_JWT_SECRET,
+                    algorithms=["HS256"],
+                    options={"verify_aud": False},
+                )
+                user_id = payload.get("sub")
+                if user_id:
+                    return {"id": user_id, "email": payload.get("email", "")}
+            except Exception:
+                pass  # fall through to header fallback
 
+    # 2. Fallback: X-User-Id header
+    user_id = request.headers.get("X-User-Id", "").strip()
+    if user_id:
+        return {
+            "id": user_id,
+            "email": request.headers.get("X-User-Email", ""),
+        }
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> dict:
-    """
-    FastAPI dependency — extracts and verifies the bearer token.
-    Returns {"id": user_uuid, "email": str}.
-    Raises 401 if missing or invalid.
-    """
-    if not credentials:
-        raise HTTPException(401, "Authentication required. Please sign in.")
-    payload = _decode_token(credentials.credentials)
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(401, "Token missing user ID.")
-    return {
-        "id": user_id,
-        "email": payload.get("email", ""),
-    }
-
-
-def optional_user(credentials: HTTPAuthorizationCredentials = Depends(_bearer)) -> Optional[dict]:
-    """Like get_current_user but returns None instead of raising — for public endpoints."""
-    if not credentials:
-        return None
-    try:
-        return get_current_user(credentials)
-    except HTTPException:
-        return None
+    raise HTTPException(401, "Authentication required. Please sign in.")
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -126,9 +102,9 @@ def list_materials(user: dict = Depends(get_current_user)):
     try:
         return {"materials": store.get_user_materials(user["id"])}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         raise HTTPException(500, f"Materials error: {type(e).__name__}: {str(e)}")
+
 
 @app.get("/materials/{mid}", tags=["Materials"])
 def get_material(mid: str, user: dict = Depends(get_current_user)):
@@ -175,14 +151,12 @@ def generate(body: GenerateRequest, user: dict = Depends(get_current_user)):
             qs = store.save_question_set(qs, user["id"])
         return {"success": True, "question_set": qs}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         raise HTTPException(500, str(e))
 
 
 @app.get("/question_sets", tags=["Questions"])
 def list_question_sets(user: dict = Depends(get_current_user)):
-    """Returns only question sets created by the authenticated user."""
     return {"question_sets": store.get_user_question_sets(user["id"])}
 
 
@@ -301,19 +275,11 @@ def finish_player(body: FinishRequest, user: dict = Depends(get_current_user)):
 
 @app.get("/me/history", tags=["User"])
 def my_history(user: dict = Depends(get_current_user)):
-    """
-    Returns all sessions the authenticated user has participated in,
-    with their personal score and answers.
-    """
     try:
         return {"history": store.get_user_session_history(user["id"])}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         raise HTTPException(500, f"History error: {type(e).__name__}: {str(e)}")
-
-
-
 
 
 # ── AI Explanation ─────────────────────────────────────────────────────────────
@@ -337,8 +303,7 @@ def explain(body: ExplainRequest, user: dict = Depends(get_current_user)):
         )
         return {"explanation": text}
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         raise HTTPException(500, str(e))
 
 
@@ -396,6 +361,5 @@ Respond with ONLY valid JSON, no explanation outside it:
         }
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        import traceback; traceback.print_exc()
         raise HTTPException(500, str(e))

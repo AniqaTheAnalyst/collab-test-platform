@@ -24,18 +24,17 @@ _client: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 # ── Session helpers ───────────────────────────────────────────────────────────
 
 def _save_session(session_obj) -> None:
-    """Persist Supabase session into Streamlit session_state."""
-    st.session_state["sb_access_token"] = session_obj.access_token
+    """Persist Supabase session into both session_state and query_params."""
+    st.session_state["sb_access_token"]  = session_obj.access_token
     st.session_state["sb_refresh_token"] = session_obj.refresh_token
-    st.session_state["sb_user_id"] = session_obj.user.id
-    st.session_state["sb_user_email"] = session_obj.user.email
+    st.session_state["sb_user_id"]       = session_obj.user.id
+    st.session_state["sb_user_email"]    = session_obj.user.email
 
 
 def _clear_session() -> None:
     for key in ["sb_access_token", "sb_refresh_token", "sb_user_id", "sb_user_email"]:
         st.session_state.pop(key, None)
-
-
+        
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def sign_up(email: str, password: str) -> dict:
@@ -83,16 +82,22 @@ def sign_out() -> None:
 
 
 def restore_session() -> bool:
-    """
-    Try to restore a session from refresh token stored in session_state.
-    Call this at the top of every page before require_auth().
-    Returns True if a valid session is now active.
-    """
-    # Already have a valid token in memory
+    # 1. Already in session_state — still valid
     if st.session_state.get("sb_access_token") and st.session_state.get("sb_user_id"):
         return True
 
-    # Try to refresh using stored refresh token
+    # 2. Try Supabase refresh — gets a new token using the existing client session
+    try:
+        res = _client.auth.get_session()
+        if res and res.access_token:
+            st.session_state["sb_access_token"] = res.access_token
+            st.session_state["sb_user_id"]      = res.user.id
+            st.session_state["sb_user_email"]   = res.user.email
+            return True
+    except Exception:
+        pass
+
+    # 3. Try explicit refresh with stored refresh token
     refresh_token = st.session_state.get("sb_refresh_token")
     if refresh_token:
         try:
@@ -105,7 +110,6 @@ def restore_session() -> bool:
 
     _clear_session()
     return False
-
 
 def get_current_user() -> Optional[dict]:
     """
