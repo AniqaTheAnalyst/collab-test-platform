@@ -86,6 +86,15 @@ def preprocess_image(file_bytes: bytes) -> bytes:
     return buffer.tobytes()
 
 
+def _is_repetitive(text: str, threshold: float = 0.4) -> bool:
+    """Return True if the text seems to be a hallucination loop."""
+    if not text or len(text) < 100:
+        return False
+    chunks = [text[i:i+80] for i in range(0, len(text), 80)]
+    unique_ratio = len(set(chunks)) / len(chunks)
+    return unique_ratio < threshold
+
+
 def extract_from_image(file_bytes: bytes, filename: str) -> str:
     """Extract text from an image using NVIDIA API (free tier)."""
     try:
@@ -100,7 +109,6 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
         media_type = media_type_map.get(ext, "image/jpeg")
 
         processed = preprocess_image(file_bytes)
-
         b64_image = base64.standard_b64encode(processed).decode("utf-8")
         image_url = f"data:{media_type};base64,{b64_image}"
 
@@ -115,41 +123,42 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
                 {
                     "role": "user",
                     "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_url},
-                        },
+                        {"type": "image_url", "image_url": {"url": image_url}},
                         {
                             "type": "text",
-                            "text": ( """
-                                        You are an OCR engine.
-
-                                        Rules:
-                                        1. Copy ONLY the text that is actually visible.
-                                        2. Do NOT guess missing or blurry words.
-                                        3. If a word cannot be read, write [UNCLEAR].
-                                        4. Preserve the original language exactly (Bangla or English).
-                                        5. Preserve line breaks and numbering.
-                                        6. Do NOT translate.
-                                        7. Do NOT summarize.
-                                        8. Do NOT explain.
-                                        9. Never invent text.
-
-                                        Return only the transcription.
-                                        """
+                            "text": (
+                                "You are an OCR engine. Transcribe ONLY the text visible in this image.\n"
+                                "Rules:\n"
+                                "- Copy text exactly as written (Bangla or English).\n"
+                                "- Preserve line breaks and numbering.\n"
+                                "- Write [UNCLEAR] for unreadable words.\n"
+                                "- Do NOT translate, summarize, explain, or add anything.\n"
+                                "- Do NOT repeat lines.\n"
+                                "- Stop after the last visible line.\n"
+                                "Output the transcription only."
                             ),
                         },
                     ],
                 }
             ],
-            max_tokens=4096,
+            max_tokens=2048,
             temperature=0.0,
+            stop=["[END]", "---"],
         )
-        return response.choices[0].message.content.strip()
+
+        result = response.choices[0].message.content.strip()
+
+        if _is_repetitive(result):
+            st.warning("⚠️ The model produced repetitive output. The image may be too complex or low-contrast. Try cropping it into smaller sections.")
+            return ""
+
+        return result
 
     except Exception as e:
         st.error(f"Image extraction error: {e}")
         return ""
+
+
 # ── Layout ─────────────────────────────────────────────────────────────────────
 
 col1, col2 = st.columns([2, 1])
@@ -197,7 +206,15 @@ with col1:
             type=["png", "jpg", "jpeg", "webp"],
             help="Handwritten notes, whiteboard photos, textbook page photos, or screenshots.",
         )
+
+        # Clear stale session state when a new image is uploaded
         if img_file:
+            current_name = img_file.name
+            if st.session_state.get("_last_img_name") != current_name:
+                st.session_state.pop("img_extracted_text", None)
+                st.session_state.pop("img_extracted_title", None)
+                st.session_state["_last_img_name"] = current_name
+
             st.image(img_file, caption="Uploaded image", use_container_width=True)
             if st.button("🔍 Extract Text from Image", type="primary"):
                 with st.spinner("Reading text from image…"):
@@ -210,15 +227,14 @@ with col1:
                 else:
                     st.warning("Could not extract text. Try a clearer image.")
 
-            if st.session_state.get("img_extracted_text"):
-                with st.expander("Preview extracted text"):
-                    st.text(st.session_state["img_extracted_text"][:1000] + "…")
-                extracted_text  = st.session_state["img_extracted_text"]
-                extracted_title = st.session_state.get("img_extracted_title", "")
+        if st.session_state.get("img_extracted_text"):
+            with st.expander("Preview extracted text"):
+                st.text(st.session_state["img_extracted_text"][:1000] + "…")
+            extracted_text  = st.session_state["img_extracted_text"]
+            extracted_title = st.session_state.get("img_extracted_title", "")
 
+    # ── Save form (outside tabs, inside col1) ──────────────────────────────────
     st.divider()
-
-    # ── Save form ──────────────────────────────────────────────────────────────
     st.markdown("### 2️⃣ Save Material")
 
     title = st.text_input(
@@ -231,7 +247,6 @@ with col1:
         placeholder="biology, midterm, chapter-3",
     )
 
-    # Show word count of what will be saved
     if extracted_text:
         st.caption(f"📝 Ready to save: {len(extracted_text.split())} words")
 
@@ -253,9 +268,9 @@ with col1:
                     })
                 if result and result.get("success"):
                     st.success("✅ Material saved!")
-                    # Clear image extraction state
                     st.session_state.pop("img_extracted_text", None)
                     st.session_state.pop("img_extracted_title", None)
+                    st.session_state.pop("_last_img_name", None)
 
     with col_btn2:
         if st.button("🤖 Generate Questions →", use_container_width=True, disabled=not extracted_text):
@@ -264,6 +279,7 @@ with col1:
                 st.session_state["prefill_title"]    = title.strip()
             st.switch_page("pages/2_Generate_Questions.py")
 
+# ── Right column ───────────────────────────────────────────────────────────────
 with col2:
     st.markdown("#### 📋 Supported formats")
     st.info("""
