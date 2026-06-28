@@ -63,7 +63,7 @@ def extract_from_image(file_bytes: bytes, filename: str) -> str:
         )
 
         response = client.chat.completions.create(
-            model="google/gemma-3-27b-it",  # better than llama for Bangla
+            model="google/gemma-3-12b-it",  # better than llama for Bangla
             messages=[
                 {
                     "role": "user",
