@@ -168,10 +168,15 @@ def publish_question_set(qid: str, user: dict = Depends(get_current_user)):
 
 @app.get("/question_sets/{qid}", tags=["Questions"])
 def get_question_set(qid: str, user: dict = Depends(get_current_user)):
+    # First try: user owns it
     qs = store.get_question_set(qid, user["id"])
-    if not qs:
-        raise HTTPException(404, "Question set not found")
-    return qs
+    if qs:
+        return qs
+    # Second try: user is a session participant (not the owner)
+    qs = store.get_question_set(qid, user_id=None)
+    if qs:
+        return qs
+    raise HTTPException(404, "Question set not found")
 
 
 # ── Sessions ───────────────────────────────────────────────────────────────────

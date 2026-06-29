@@ -181,17 +181,11 @@ def publish_question_set(qid: str, user_id: str) -> Optional[dict]:
 
 
 def get_question_set(qid: str, user_id: Optional[str] = None) -> Optional[dict]:
-    """
-    Return a question set.
-    If user_id provided, must match (owner check).
-    If not provided (internal use like session lookup), returns regardless of owner.
-    """
     query = _client.table("question_sets").select("*").eq("id", qid)
-    if user_id:
+    if user_id:                              # only filter by user if provided
         query = query.eq("user_id", user_id)
     resp = query.execute()
     return resp.data[0] if resp.data else None
-
 
 def _get_question_set_any(qid: str) -> Optional[dict]:
     """Internal: fetch question set without user scope (for session creation)."""
