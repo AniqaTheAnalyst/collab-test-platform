@@ -202,65 +202,55 @@ if st.session_state.get("quiz_active"):
 
 
 # ── JOIN FORM ──────────────────────────────────────────────────────────────────
-st.title("🏃 Join a Quiz Session")
-st.markdown("Enter the session code shared by your host to jump in.")
-st.divider()
-
-join_name      = st.text_input("Your name", value=st.session_state.get("player_name", ""),
-                                placeholder="e.g. Rafi")
-code_input     = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
-password_input = st.text_input("Password (leave blank if none)", type="password")
-
-col1, col2 = st.columns(2)
-
 # ── JOIN FORM ──────────────────────────────────────────────────────────────────
-st.title("🏃 Join a Quiz Session")
-st.markdown("Enter the session code shared by your host to jump in.")
-st.divider()
+if not st.session_state.get("joined"):
+    st.title("🏃 Join a Quiz Session")
+    st.markdown("Enter the session code shared by your host to jump in.")
+    st.divider()
 
-join_name      = st.text_input("Your name", value=st.session_state.get("player_name", ""),
-                                placeholder="e.g. Rafi")
-code_input     = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
-password_input = st.text_input("Password (leave blank if none)", type="password")
+    join_name      = st.text_input("Your name", value=st.session_state.get("player_name", ""),
+                                    placeholder="e.g. Rafi")
+    code_input     = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
+    password_input = st.text_input("Password (leave blank if none)", type="password")
 
-col1, col2 = st.columns(2)
+    col1, col2 = st.columns(2)
 
-with col1:
-    if st.button("🚀 Join Session", type="primary", use_container_width=True):
-        if not join_name.strip():
-            st.error("Enter your name first.")
-        elif not code_input:
-            st.error("Enter a session code.")
-        else:
-            result = api_post("/sessions/join", {
-                "code":        code_input,
-                "player_name": join_name.strip(),
-                "password":    password_input,
-            })
-            if result and result.get("success"):
-                sess = result["session"]
-                st.session_state["player_name"]  = join_name.strip()
-                st.session_state["session_code"] = sess["code"]
-                st.session_state["session_data"] = sess
-                st.session_state["is_host"]      = False
-                st.session_state["joined"]       = True
-                st.rerun()
+    with col1:
+        if st.button("🚀 Join Session", type="primary", use_container_width=True):
+            if not join_name.strip():
+                st.error("Enter your name first.")
+            elif not code_input:
+                st.error("Enter a session code.")
+            else:
+                result = api_post("/sessions/join", {
+                    "code":        code_input,
+                    "player_name": join_name.strip(),
+                    "password":    password_input,
+                })
+                if result and result.get("success"):
+                    sess = result["session"]
+                    st.session_state["player_name"]  = join_name.strip()
+                    st.session_state["session_code"] = sess["code"]
+                    st.session_state["session_data"] = sess
+                    st.session_state["is_host"]      = False
+                    st.session_state["joined"]       = True
+                    st.rerun()
 
-with col2:
-    if st.button("📋 Browse open sessions", use_container_width=True):
-        data          = api_get("/sessions")
-        open_sessions = data.get("sessions", []) if data else []
-        if open_sessions:
-            st.markdown("### Open Sessions")
-            for s in open_sessions:
-                with st.expander(
-                    f"{s.get('qs_title', 'Untitled')} — {s['code']} | "
-                    f"👥 {len(s.get('players', []))}/5"
-                ):
-                    st.write(f"Host: {s['host']}")
-                    st.caption("🔒 Password required" if s.get("password") else "🔓 Open")
-        else:
-            st.info("No open sessions right now. Ask someone to host one!")
+    with col2:
+        if st.button("📋 Browse open sessions", use_container_width=True):
+            data          = api_get("/sessions")
+            open_sessions = data.get("sessions", []) if data else []
+            if open_sessions:
+                st.markdown("### Open Sessions")
+                for s in open_sessions:
+                    with st.expander(
+                        f"{s.get('qs_title', 'Untitled')} — {s['code']} | "
+                        f"👥 {len(s.get('players', []))}/5"
+                    ):
+                        st.write(f"Host: {s['host']}")
+                        st.caption("🔒 Password required" if s.get("password") else "🔓 Open")
+            else:
+                st.info("No open sessions right now. Ask someone to host one!")
 
 # ── WAITING FOR HOST ──────────────────────────────────────────────────────────
 if st.session_state.get("joined") and not st.session_state.get("quiz_active"):
