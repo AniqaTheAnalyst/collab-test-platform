@@ -290,16 +290,30 @@ def join_session(code: str, player_name: str, password: str = "", user_id: str =
     if (count_resp.count or 0) >= MAX_PLAYERS:
         raise ValueError(f"Session full ({MAX_PLAYERS} players max)")
 
-    name_check = (
+    # Check if this exact user already joined — let them rejoin instead of duplicating
+    existing_check = (
         _client.table("session_players")
-        .select("id")
+        .select("*")
         .eq("session_id", sid)
-        .eq("display_name", player_name)
+        .eq("user_id", user_id)
         .execute()
     )
-    if name_check.data:
-        raise ValueError("Name already taken in this session")
+    if existing_check.data:
+        # User already in session — return existing player row
+        p_data = existing_check.data[0]
+        session_dict = _build_session_dict(session_row)
+        player_dict = {
+            "name":      p_data["display_name"],
+            "is_host":   p_data["is_host"],
+            "score":     p_data["score"],
+            "q_index":   p_data["q_index"],
+            "answers":   [],
+            "finished":  p_data["finished"],
+            "joined_at": p_data["joined_at"],
+        }
+        return session_dict, player_dict
 
+    # New player — insert fresh row (no name uniqueness check)
     player_row = {
         "session_id":   sid,
         "display_name": player_name,
@@ -313,7 +327,7 @@ def join_session(code: str, player_name: str, password: str = "", user_id: str =
     p_data = p_resp.data[0]
 
     session_dict = _build_session_dict(session_row)
-    player_dict  = {
+    player_dict = {
         "name":      player_name,
         "is_host":   False,
         "score":     0,
