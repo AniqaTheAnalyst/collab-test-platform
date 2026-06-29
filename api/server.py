@@ -238,9 +238,22 @@ def get_session(code: str, user: dict = Depends(get_current_user)):
 @app.post("/sessions/join", tags=["Sessions"])
 def join_session(body: JoinSessionRequest, user: dict = Depends(get_current_user)):
     try:
+        # DEBUG — remove after fixing
+        print("=== JOIN DEBUG ===")
+        print("code:", body.code)
+        print("player_name:", body.player_name)
+        print("password:", repr(body.password))
+        print("user_id:", user["id"])
+        
+        # Also print the actual session from DB
+        existing = store.get_session_by_code(body.code)
+        print("session in DB:", existing)
+        print("=== END DEBUG ===")
+        
         session, player = store.join_session(body.code, body.player_name, body.password, user["id"])
         return {"success": True, "session": session, "player": player}
     except ValueError as e:
+        print("JOIN ERROR:", str(e))  # <-- this shows the exact reason
         raise HTTPException(400, str(e))
 
 
