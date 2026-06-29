@@ -213,6 +213,18 @@ password_input = st.text_input("Password (leave blank if none)", type="password"
 
 col1, col2 = st.columns(2)
 
+# ── JOIN FORM ──────────────────────────────────────────────────────────────────
+st.title("🏃 Join a Quiz Session")
+st.markdown("Enter the session code shared by your host to jump in.")
+st.divider()
+
+join_name      = st.text_input("Your name", value=st.session_state.get("player_name", ""),
+                                placeholder="e.g. Rafi")
+code_input     = st.text_input("Session code", placeholder="e.g. ABCD-1234").upper().strip()
+password_input = st.text_input("Password (leave blank if none)", type="password")
+
+col1, col2 = st.columns(2)
+
 with col1:
     if st.button("🚀 Join Session", type="primary", use_container_width=True):
         if not join_name.strip():
@@ -231,25 +243,8 @@ with col1:
                 st.session_state["session_code"] = sess["code"]
                 st.session_state["session_data"] = sess
                 st.session_state["is_host"]      = False
-
-                with st.spinner("Joined! Waiting for host to start the quiz…"):
-                    for _ in range(60):
-                        time.sleep(2)
-                        updated = api_get(f"/sessions/{sess['code']}")
-                        if updated and updated.get("status") == "started":
-                            qs_data = api_get(f"/question_sets/{updated['question_set_id']}")
-                            updated["questions"] = qs_data.get("questions", []) if qs_data else []
-                            st.session_state["session_data"]  = updated
-                            st.session_state["quiz_active"]   = True
-                            st.session_state["q_index"]       = 0
-                            st.session_state["answers"]       = []
-                            st.session_state["score"]         = 0
-                            st.session_state["q_start_time"]  = None
-                            st.rerun()
-                        elif updated and updated.get("status") == "finished":
-                            st.warning("This session already finished.")
-                            break
-                st.warning("Host didn't start in time. Try refreshing or ask the host.")
+                st.session_state["joined"]       = True
+                st.rerun()
 
 with col2:
     if st.button("📋 Browse open sessions", use_container_width=True):
@@ -266,3 +261,29 @@ with col2:
                     st.caption("🔒 Password required" if s.get("password") else "🔓 Open")
         else:
             st.info("No open sessions right now. Ask someone to host one!")
+
+# ── WAITING FOR HOST ──────────────────────────────────────────────────────────
+if st.session_state.get("joined") and not st.session_state.get("quiz_active"):
+    sess = st.session_state["session_data"]
+    st.info("✅ Joined! Waiting for host to start the quiz…")
+
+    updated = api_get(f"/sessions/{sess['code']}")
+    if updated and updated.get("status") == "started":
+        qs_data = api_get(f"/question_sets/{updated['question_set_id']}")
+        updated["questions"] = qs_data.get("questions", []) if qs_data else []
+        st.session_state["session_data"] = updated
+        st.session_state["quiz_active"]  = True
+        st.session_state["q_index"]      = 0
+        st.session_state["answers"]      = []
+        st.session_state["score"]        = 0
+        st.session_state["q_start_time"] = None
+        st.session_state["joined"]       = False
+        st.rerun()
+    elif updated and updated.get("status") == "finished":
+        st.warning("This session already finished.")
+        st.session_state["joined"] = False
+    else:
+        time.sleep(2)
+        st.rerun()
+
+    st.stop()
